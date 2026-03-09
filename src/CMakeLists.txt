@@ -12,7 +12,6 @@ endif()
 
 # ---------------------------------------------------------------------------
 # Player logic library (AudioPlayer, Playlist, CLI UI, i18n).
-# GuiApp (Dear ImGui front-end) is superseded by the Qt Quick GUI below.
 # ---------------------------------------------------------------------------
 add_library(vibe_player_lib STATIC
     AudioPlayer.cpp
