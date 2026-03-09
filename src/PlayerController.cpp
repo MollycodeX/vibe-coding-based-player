@@ -2,6 +2,11 @@
 // Bridges the Qt QML front-end to the miniaudio-backed AudioPlayer/Playlist.
 
 #include "PlayerController.h"
+#include <QFileInfo>
+
+static const QStringList audioExtensions = {
+    "mp3", "wav", "flac", "ogg", "aac", "wma", "m4a", "opus"
+};
 
 PlayerController::PlayerController(QObject *parent)
     : QObject(parent)
@@ -47,6 +52,16 @@ int PlayerController::currentIndex() const
     return m_playlist.currentIndex();
 }
 
+float PlayerController::position() const
+{
+    return m_player.getPositionSeconds();
+}
+
+float PlayerController::duration() const
+{
+    return m_player.getDurationSeconds();
+}
+
 void PlayerController::play()
 {
     if (!m_player.getCurrentTrack().empty()) {
@@ -55,6 +70,7 @@ void PlayerController::play()
         m_player.loadTrack(m_playlist.currentTrack());
         m_player.play();
         emit currentTrackChanged();
+        emit durationChanged();
     }
     emit playingChanged();
 }
@@ -69,6 +85,7 @@ void PlayerController::stop()
 {
     m_player.stop();
     emit playingChanged();
+    emit positionChanged();
 }
 
 void PlayerController::next()
@@ -80,6 +97,7 @@ void PlayerController::next()
         emit currentTrackChanged();
         emit playingChanged();
         emit playlistChanged();
+        emit durationChanged();
     }
 }
 
@@ -92,6 +110,7 @@ void PlayerController::previous()
         emit currentTrackChanged();
         emit playingChanged();
         emit playlistChanged();
+        emit durationChanged();
     }
 }
 
@@ -103,7 +122,22 @@ void PlayerController::addTrack(const QString &filePath)
     if (m_playlist.trackCount() == 1) {
         m_player.loadTrack(m_playlist.currentTrack());
         emit currentTrackChanged();
+        emit durationChanged();
     }
+}
+
+void PlayerController::addFolder(const QString &folderPath)
+{
+    QDir dir(folderPath);
+    if (!dir.exists()) return;
+
+    QStringList filters;
+    for (const QString &ext : audioExtensions)
+        filters << ("*." + ext);
+
+    QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::Name);
+    for (const QFileInfo &fi : files)
+        addTrack(fi.absoluteFilePath());
 }
 
 void PlayerController::removeTrack(int index)
@@ -121,6 +155,7 @@ void PlayerController::removeTrack(int index)
         }
         emit currentTrackChanged();
         emit playingChanged();
+        emit durationChanged();
     }
 }
 
@@ -133,4 +168,16 @@ void PlayerController::selectTrack(int index)
     emit currentTrackChanged();
     emit playingChanged();
     emit playlistChanged();
+    emit durationChanged();
+}
+
+void PlayerController::seek(float seconds)
+{
+    m_player.seekTo(seconds);
+    emit positionChanged();
+}
+
+void PlayerController::updatePosition()
+{
+    emit positionChanged();
 }

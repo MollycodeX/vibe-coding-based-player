@@ -2,15 +2,66 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Dialogs
 
 Window {
     id: root
     width: 480
-    height: 520
+    height: 560
     minimumWidth: 360
-    minimumHeight: 400
+    minimumHeight: 440
     visible: true
     title: qsTr("Vibe Player")
+
+    // Helper to format seconds as m:ss
+    function formatTime(secs) {
+        if (isNaN(secs) || secs < 0) secs = 0
+        var m = Math.floor(secs / 60)
+        var s = Math.floor(secs % 60)
+        return m + ":" + (s < 10 ? "0" : "") + s
+    }
+
+    // Timer to poll playback position while playing
+    Timer {
+        id: positionTimer
+        interval: 250
+        repeat: true
+        running: playerController.isPlaying
+        onTriggered: playerController.updatePosition()
+    }
+
+    // File dialog for adding individual audio files
+    FileDialog {
+        id: fileDialog
+        title: qsTr("Select Audio Files")
+        nameFilters: [qsTr("Audio files") + " (*.mp3 *.wav *.flac *.ogg *.aac *.wma *.m4a *.opus)"]
+        fileMode: FileDialog.OpenFiles
+        onAccepted: {
+            for (var i = 0; i < selectedFiles.length; i++) {
+                var path = selectedFiles[i].toString()
+                // Strip file:// prefix
+                if (path.startsWith("file:///"))
+                    path = path.substring(7)
+                else if (path.startsWith("file://"))
+                    path = path.substring(7)
+                playerController.addTrack(path)
+            }
+        }
+    }
+
+    // Folder dialog for adding an entire folder of audio files
+    FolderDialog {
+        id: folderDialog
+        title: qsTr("Select Music Folder")
+        onAccepted: {
+            var path = selectedFolder.toString()
+            if (path.startsWith("file:///"))
+                path = path.substring(7)
+            else if (path.startsWith("file://"))
+                path = path.substring(7)
+            playerController.addFolder(path)
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -26,6 +77,37 @@ Window {
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideMiddle
             font.pointSize: 11
+        }
+
+        // Progress bar
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            Slider {
+                id: progressSlider
+                Layout.fillWidth: true
+                from: 0
+                to: playerController.duration > 0 ? playerController.duration : 1
+                value: playerController.position
+                enabled: playerController.duration > 0
+                onMoved: playerController.seek(value)
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: formatTime(playerController.position)
+                    font.pointSize: 9
+                    color: "#666666"
+                }
+                Item { Layout.fillWidth: true }
+                Label {
+                    text: formatTime(playerController.duration)
+                    font.pointSize: 9
+                    color: "#666666"
+                }
+            }
         }
 
         // Transport controls
@@ -73,25 +155,18 @@ Window {
             Label { text: Math.round(volumeSlider.value * 100) + "%" }
         }
 
-        // Add track row
-        RowLayout {
-            Layout.fillWidth: true
+        // Add track buttons (file picker)
+        Row {
+            Layout.alignment: Qt.AlignHCenter
             spacing: 8
 
-            TextField {
-                id: trackPathField
-                Layout.fillWidth: true
-                placeholderText: qsTr("Audio file path...")
+            Button {
+                text: qsTr("Add Files...")
+                onClicked: fileDialog.open()
             }
             Button {
-                id: addButton
-                text: qsTr("Add")
-                onClicked: {
-                    if (trackPathField.text !== "") {
-                        playerController.addTrack(trackPathField.text)
-                        trackPathField.text = ""
-                    }
-                }
+                text: qsTr("Add Folder...")
+                onClicked: folderDialog.open()
             }
         }
 
