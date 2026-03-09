@@ -126,13 +126,7 @@ void PlayerController::removeTrack(int index)
 
 void PlayerController::selectTrack(int index)
 {
-    const auto &tracks = m_playlist.getTracks();
-    if (index < 0 || index >= static_cast<int>(tracks.size())) return;
-
-    // Navigate to the chosen track by adjusting the internal cursor.
-    while (m_playlist.currentIndex() != index) {
-        m_playlist.nextTrack();
-    }
+    if (!m_playlist.setCurrentIndex(index)) return;
 
     m_player.loadTrack(m_playlist.currentTrack());
     m_player.play();

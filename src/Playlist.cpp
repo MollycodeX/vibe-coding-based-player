@@ -63,3 +63,9 @@ const std::string& Playlist::previousTrack() {
 const std::vector<std::string>& Playlist::getTracks() const {
     return tracks;
 }
+
+bool Playlist::setCurrentIndex(int index) {
+    if (index < 0 || index >= static_cast<int>(tracks.size())) return false;
+    currentIdx = index;
+    return true;
+}

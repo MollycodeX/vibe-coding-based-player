@@ -81,6 +81,28 @@ static void testPlaylistClear() {
     std::cout << "  [PASS] clear\n";
 }
 
+static void testPlaylistSetCurrentIndex() {
+    Playlist pl;
+    pl.addTrack("a.mp3");
+    pl.addTrack("b.mp3");
+    pl.addTrack("c.mp3");
+
+    assert(pl.setCurrentIndex(2));
+    assert(pl.currentIndex() == 2);
+    assert(pl.currentTrack() == "c.mp3");
+
+    assert(pl.setCurrentIndex(0));
+    assert(pl.currentIndex() == 0);
+    assert(pl.currentTrack() == "a.mp3");
+
+    // Out-of-range indices should fail and leave the cursor unchanged.
+    assert(!pl.setCurrentIndex(-1));
+    assert(pl.currentIndex() == 0);
+    assert(!pl.setCurrentIndex(3));
+    assert(pl.currentIndex() == 0);
+    std::cout << "  [PASS] setCurrentIndex\n";
+}
+
 // ---------------------------------------------------------------------------
 // AudioDecoder unit tests
 // ---------------------------------------------------------------------------
@@ -89,8 +111,8 @@ static void testAudioDecoderInit() {
     // Initializing with a valid path should succeed.
     assert(dec.initialize("test.wav"));
     // Initializing with nullptr should fail.
-    AudioDecoder dec2;
-    assert(!dec2.initialize(nullptr));
+    AudioDecoder nullPathDecoder;
+    assert(!nullPathDecoder.initialize(nullptr));
     std::cout << "  [PASS] AudioDecoder initialize\n";
 }
 
@@ -131,6 +153,7 @@ int main() {
     testPlaylistNextPrev();
     testPlaylistRemove();
     testPlaylistClear();
+    testPlaylistSetCurrentIndex();
 
     std::cout << "\nRunning AudioDecoder tests...\n";
     testAudioDecoderInit();
