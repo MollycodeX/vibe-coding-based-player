@@ -82,7 +82,7 @@ bool AudioPlayer::loadTrack(const std::string& filePath) {
         std::cerr << "[AudioPlayer] Failed to convert file path to wide string.\n";
         return false;
     }
-    std::wstring widePath(static_cast<size_t>(wlen), L'\0');
+    std::wstring widePath(static_cast<size_t>(wlen - 1), L'\0');
     MultiByteToWideChar(CP_UTF8, 0, filePath.c_str(), -1, &widePath[0], wlen);
 
     ma_result result = ma_sound_init_from_file_w(
