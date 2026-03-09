@@ -2,32 +2,64 @@
 
 #include "Playlist.h"
 
-Playlist::Playlist() {
-    // Constructor implementation
+const std::string Playlist::EMPTY_TRACK = "";
+
+Playlist::Playlist() : currentIdx(-1) {}
+
+void Playlist::addTrack(const std::string& filePath) {
+    tracks.push_back(filePath);
+    if (currentIdx < 0) {
+        currentIdx = 0;
+    }
 }
 
-void Playlist::addSong(const Song& song) {
-    // Add song implementation
+void Playlist::removeTrack(int index) {
+    if (index < 0 || index >= static_cast<int>(tracks.size())) return;
+    tracks.erase(tracks.begin() + index);
+    if (tracks.empty()) {
+        currentIdx = -1;
+    } else if (currentIdx >= static_cast<int>(tracks.size())) {
+        currentIdx = static_cast<int>(tracks.size()) - 1;
+    }
 }
 
-void Playlist::removeSong(const std::string& songName) {
-    // Remove song implementation
+void Playlist::clear() {
+    tracks.clear();
+    currentIdx = -1;
 }
 
-void Playlist::play() {
-    // Play implementation
+bool Playlist::hasTrack() const {
+    return !tracks.empty();
 }
 
-void Playlist::pause() {
-    // Pause implementation
+int Playlist::trackCount() const {
+    return static_cast<int>(tracks.size());
 }
 
-void Playlist::stop() {
-    // Stop implementation
+int Playlist::currentIndex() const {
+    return currentIdx;
 }
 
-void Playlist::shuffle() {
-    // Shuffle implementation
+const std::string& Playlist::currentTrack() const {
+    if (currentIdx < 0 || currentIdx >= static_cast<int>(tracks.size())) {
+        return EMPTY_TRACK;
+    }
+    return tracks[currentIdx];
 }
 
-// Additional methods...
+const std::string& Playlist::nextTrack() {
+    if (tracks.empty()) return EMPTY_TRACK;
+    currentIdx = (currentIdx + 1) % static_cast<int>(tracks.size());
+    return tracks[currentIdx];
+}
+
+const std::string& Playlist::previousTrack() {
+    if (tracks.empty()) return EMPTY_TRACK;
+    currentIdx = (currentIdx - 1 + static_cast<int>(tracks.size()))
+                 % static_cast<int>(tracks.size());
+    return tracks[currentIdx];
+}
+
+const std::vector<std::string>& Playlist::getTracks() const {
+    return tracks;
+}
