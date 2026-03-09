@@ -1,0 +1,11 @@
+/build/
+/CMakeFiles/
+CMakeCache.txt
+*.o
+*.obj
+*.exe
+*.log
+*.user
+*.swp
+*.swo
+*.DS_Store

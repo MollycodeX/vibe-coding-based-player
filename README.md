@@ -1,15 +1,11 @@
 # vibe-coding-based-player
-#这是基于Gemini，chatGPT和claude使用vibe coding做出的个人测试项目
 
+A C++ project set up with CMake to demonstrate a basic player structure.
 
+## Project Structure
 
-1.介绍，用途及效果
-        计划为基于c++及其相关库开发的一款跨平台（windows和android，其余平台待定）音乐播放器，可进行暂停/播放，上一曲/下一曲和音量调节等基本功能，同时拥有风格化UI（类似windows aero），显示歌词，并基于音乐的状态，频率所显示的音乐可视化界面。
-2.现开发阶段（根据开发进度实时修改）
-        现仍处于计划构想阶段，此阶段需实现最基本的音频文件读取，基本的音频控制（如暂停/播放，上一曲/下一曲和音量调节）及最基本的ui（无需在现阶段实现风格化）以验证项目可行性。
-3.计划中的新功能
-        支持更多平台（macos，linux和ios）
-        支持联网查找音频文件的元数据及其歌词
-        添加类似索尼dsee的音频上采样技术和类似索尼360 upmix的音频升格技术
-        根据所播放音乐的风格智能定制其风格化音频可视化界面
-      
+- `src/` — Source code
+- `include/` — Header files
+- `tests/` — Unit & integration tests
+- `docs/` — Documentation
+- `build/` — Out-of-source CMake build directory

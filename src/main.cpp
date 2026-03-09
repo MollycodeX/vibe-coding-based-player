@@ -1,8 +1,9 @@
-# Vibe Coding Based Player
-
-This file contains the entry point for the application.
+#include "player.hpp"
+#include <iostream>
 
 int main() {
-    // Initialization code here
+    std::cout << "Welcome to vibe-coding-based-player!" << std::endl;
+    Player p;
+    p.play();
     return 0;
 }
