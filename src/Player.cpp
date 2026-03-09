@@ -1,21 +1,7 @@
 // Player.cpp
+// PlayerControlInterface is a pure abstract class (no implementation needed).
+// Concrete implementations live in AudioPlayer and PlayerController.
 
 #include "Player.h"
 
-Player::Player() {
-    // Constructor implementation
-}
-
-void Player::play() {
-    // Play implementation
-}
-
-void Player::pause() {
-    // Pause implementation
-}
-
-void Player::stop() {
-    // Stop implementation
-}
-
-// Additional methods can be implemented here
+// No definitions required – all methods are pure virtual.

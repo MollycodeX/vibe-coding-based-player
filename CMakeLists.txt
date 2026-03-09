@@ -15,4 +15,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
 # ---------------------------------------------------------------------------
 include_directories("${PROJECT_SOURCE_DIR}/include")
 add_subdirectory(src)
+
+enable_testing()
 add_subdirectory(tests)

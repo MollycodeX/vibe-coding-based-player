@@ -47,5 +47,17 @@
         <source>Add</source>
         <translation>添加</translation>
     </message>
+    <message>
+        <source>Playlist</source>
+        <translation>播放列表</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>(playlist is empty)</source>
+        <translation>(播放列表为空)</translation>
+    </message>
 </context>
 </TS>

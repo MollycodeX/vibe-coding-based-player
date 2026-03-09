@@ -16,6 +16,7 @@ endif()
 # ---------------------------------------------------------------------------
 add_library(vibe_player_lib STATIC
     AudioPlayer.cpp
+    AudioDecoder.cpp
     Playlist.cpp
     UI.cpp
     I18n.cpp

@@ -1,5 +1,6 @@
 #include "player.hpp"
 #include "Playlist.h"
+#include "AudioDecoder.h"
 #include <cassert>
 #include <iostream>
 
@@ -81,6 +82,42 @@ static void testPlaylistClear() {
 }
 
 // ---------------------------------------------------------------------------
+// AudioDecoder unit tests
+// ---------------------------------------------------------------------------
+static void testAudioDecoderInit() {
+    AudioDecoder dec;
+    // Initializing with a valid path should succeed.
+    assert(dec.initialize("test.wav"));
+    // Initializing with nullptr should fail.
+    AudioDecoder dec2;
+    assert(!dec2.initialize(nullptr));
+    std::cout << "  [PASS] AudioDecoder initialize\n";
+}
+
+static void testAudioDecoderDecodeStub() {
+    AudioDecoder dec;
+    uint8_t* buf = nullptr;
+    int size = 0;
+    // Decoding without initialization should return -1.
+    assert(dec.decode(&buf, &size) == -1);
+    // Even after initialization the stub returns -1 (not yet implemented).
+    dec.initialize("test.wav");
+    assert(dec.decode(&buf, &size) == -1);
+    std::cout << "  [PASS] AudioDecoder decode stub\n";
+}
+
+static void testAudioDecoderCleanup() {
+    AudioDecoder dec;
+    dec.initialize("test.wav");
+    dec.cleanup();
+    // After cleanup, decode should fail.
+    uint8_t* buf = nullptr;
+    int size = 0;
+    assert(dec.decode(&buf, &size) == -1);
+    std::cout << "  [PASS] AudioDecoder cleanup\n";
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 int main() {
@@ -94,6 +131,11 @@ int main() {
     testPlaylistNextPrev();
     testPlaylistRemove();
     testPlaylistClear();
+
+    std::cout << "\nRunning AudioDecoder tests...\n";
+    testAudioDecoderInit();
+    testAudioDecoderDecodeStub();
+    testAudioDecoderCleanup();
 
     std::cout << "\nAll tests passed!\n";
     return 0;
