@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QDir>
+#include <QUrl>
 #include "AudioPlayer.h"
 #include "Playlist.h"
 
@@ -20,6 +22,8 @@ class PlayerController : public QObject {
     Q_PROPERTY(QStringList trackList    READ trackList    NOTIFY playlistChanged)
     Q_PROPERTY(int         trackCount   READ trackCount   NOTIFY playlistChanged)
     Q_PROPERTY(int         currentIndex READ currentIndex NOTIFY currentTrackChanged)
+    Q_PROPERTY(float       position     READ position     NOTIFY positionChanged)
+    Q_PROPERTY(float       duration     READ duration     NOTIFY durationChanged)
 
 public:
     explicit PlayerController(QObject *parent = nullptr);
@@ -31,6 +35,8 @@ public:
     QStringList trackList()    const;
     int         trackCount()   const;
     int         currentIndex() const;
+    float       position()     const;
+    float       duration()     const;
 
     // Invokable from QML
     Q_INVOKABLE void play();
@@ -39,14 +45,21 @@ public:
     Q_INVOKABLE void next();
     Q_INVOKABLE void previous();
     Q_INVOKABLE void addTrack(const QString &filePath);
+    Q_INVOKABLE void addTrackUrl(const QUrl &fileUrl);
+    Q_INVOKABLE void addFolder(const QString &folderPath);
+    Q_INVOKABLE void addFolderUrl(const QUrl &folderUrl);
     Q_INVOKABLE void removeTrack(int index);
     Q_INVOKABLE void selectTrack(int index);
+    Q_INVOKABLE void seek(float seconds);
+    Q_INVOKABLE void updatePosition();
 
 signals:
     void playingChanged();
     void volumeChanged();
     void currentTrackChanged();
     void playlistChanged();
+    void positionChanged();
+    void durationChanged();
 
 private:
     AudioPlayer m_player;

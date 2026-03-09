@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 # ---------------------------------------------------------------------------
 # Qt6 GUI / QML / i18n dependencies
 # ---------------------------------------------------------------------------
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickDialogs2)
 
 # ---------------------------------------------------------------------------
 # 添加主源码与头文件路径

@@ -127,6 +127,30 @@ float AudioPlayer::getVolume() const {
 }
 
 // ---------------------------------------------------------------------------
+// Playback position / duration / seek
+// ---------------------------------------------------------------------------
+float AudioPlayer::getPositionSeconds() const {
+    if (!pImpl->soundLoaded) return 0.0f;
+    float cursor = 0.0f;
+    ma_sound_get_cursor_in_seconds(&pImpl->sound, &cursor);
+    return cursor;
+}
+
+float AudioPlayer::getDurationSeconds() const {
+    if (!pImpl->soundLoaded) return 0.0f;
+    float length = 0.0f;
+    ma_sound_get_length_in_seconds(&pImpl->sound, &length);
+    return length;
+}
+
+void AudioPlayer::seekTo(float seconds) {
+    if (!pImpl->soundLoaded || !pImpl->engineInitialized) return;
+    ma_uint32 sampleRate = ma_engine_get_sample_rate(&pImpl->engine);
+    ma_uint64 frame = static_cast<ma_uint64>(static_cast<double>(seconds) * sampleRate);
+    ma_sound_seek_to_pcm_frame(&pImpl->sound, frame);
+}
+
+// ---------------------------------------------------------------------------
 // State queries
 // ---------------------------------------------------------------------------
 bool AudioPlayer::isPlaying() const {

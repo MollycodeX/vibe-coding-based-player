@@ -23,6 +23,13 @@ public:
     void  setVolume(float volume);
     float getVolume() const;
 
+    // Playback position and duration in seconds.
+    float getPositionSeconds() const;
+    float getDurationSeconds() const;
+
+    // Seek to a position in seconds.
+    void seekTo(float seconds);
+
     bool               isPlaying()       const;
     const std::string& getCurrentTrack() const;
     bool               isEngineReady()   const;
