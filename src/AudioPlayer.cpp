@@ -146,7 +146,7 @@ float AudioPlayer::getDurationSeconds() const {
 void AudioPlayer::seekTo(float seconds) {
     if (!pImpl->soundLoaded || !pImpl->engineInitialized) return;
     ma_uint32 sampleRate = ma_engine_get_sample_rate(&pImpl->engine);
-    ma_uint64 frame = static_cast<ma_uint64>(seconds * sampleRate);
+    ma_uint64 frame = static_cast<ma_uint64>(static_cast<double>(seconds) * sampleRate);
     ma_sound_seek_to_pcm_frame(&pImpl->sound, frame);
 }
 

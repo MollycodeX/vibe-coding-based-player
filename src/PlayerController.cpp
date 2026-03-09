@@ -3,6 +3,7 @@
 
 #include "PlayerController.h"
 #include <QFileInfo>
+#include <QUrl>
 
 static const QStringList audioExtensions = {
     "mp3", "wav", "flac", "ogg", "aac", "wma", "m4a", "opus"
@@ -138,6 +139,16 @@ void PlayerController::addFolder(const QString &folderPath)
     QFileInfoList files = dir.entryInfoList(filters, QDir::Files, QDir::Name);
     for (const QFileInfo &fi : files)
         addTrack(fi.absoluteFilePath());
+}
+
+void PlayerController::addTrackUrl(const QUrl &fileUrl)
+{
+    addTrack(fileUrl.toLocalFile());
+}
+
+void PlayerController::addFolderUrl(const QUrl &folderUrl)
+{
+    addFolder(folderUrl.toLocalFile());
 }
 
 void PlayerController::removeTrack(int index)

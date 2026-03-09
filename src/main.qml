@@ -37,15 +37,8 @@ Window {
         nameFilters: [qsTr("Audio files") + " (*.mp3 *.wav *.flac *.ogg *.aac *.wma *.m4a *.opus)"]
         fileMode: FileDialog.OpenFiles
         onAccepted: {
-            for (var i = 0; i < selectedFiles.length; i++) {
-                var path = selectedFiles[i].toString()
-                // Strip file:// prefix
-                if (path.startsWith("file:///"))
-                    path = path.substring(7)
-                else if (path.startsWith("file://"))
-                    path = path.substring(7)
-                playerController.addTrack(path)
-            }
+            for (var i = 0; i < selectedFiles.length; i++)
+                playerController.addTrackUrl(selectedFiles[i])
         }
     }
 
@@ -53,14 +46,7 @@ Window {
     FolderDialog {
         id: folderDialog
         title: qsTr("Select Music Folder")
-        onAccepted: {
-            var path = selectedFolder.toString()
-            if (path.startsWith("file:///"))
-                path = path.substring(7)
-            else if (path.startsWith("file://"))
-                path = path.substring(7)
-            playerController.addFolder(path)
-        }
+        onAccepted: playerController.addFolderUrl(selectedFolder)
     }
 
     ColumnLayout {

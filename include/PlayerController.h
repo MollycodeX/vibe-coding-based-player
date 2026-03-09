@@ -8,6 +8,7 @@
 #include <QString>
 #include <QStringList>
 #include <QDir>
+#include <QUrl>
 #include "AudioPlayer.h"
 #include "Playlist.h"
 
@@ -44,7 +45,9 @@ public:
     Q_INVOKABLE void next();
     Q_INVOKABLE void previous();
     Q_INVOKABLE void addTrack(const QString &filePath);
+    Q_INVOKABLE void addTrackUrl(const QUrl &fileUrl);
     Q_INVOKABLE void addFolder(const QString &folderPath);
+    Q_INVOKABLE void addFolderUrl(const QUrl &folderUrl);
     Q_INVOKABLE void removeTrack(int index);
     Q_INVOKABLE void selectTrack(int index);
     Q_INVOKABLE void seek(float seconds);
