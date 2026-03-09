@@ -1,6 +1,6 @@
 #include "AudioPlayer.h"
 #include "Playlist.h"
-#include "UI.h"
+#include "GuiApp.h"
 #include <iostream>
 
 int main(int argc, char* argv[]) {
@@ -13,8 +13,12 @@ int main(int argc, char* argv[]) {
         std::cout << "Added from args: " << argv[i] << "\n";
     }
 
-    UI ui(player, playlist);
-    ui.run();
+    GuiApp app(player, playlist);
+    if (!app.init()) {
+        std::cerr << "[main] Failed to initialize GUI. Exiting.\n";
+        return 1;
+    }
+    app.run();
 
     return 0;
 }
