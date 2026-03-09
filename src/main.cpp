@@ -1,24 +1,41 @@
-#include "AudioPlayer.h"
-#include "Playlist.h"
-#include "GuiApp.h"
-#include <iostream>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QTranslator>
+#include <QLocale>
+#include "PlayerController.h"
 
-int main(int argc, char* argv[]) {
-    AudioPlayer player;
-    Playlist    playlist;
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
 
-    // Any command-line arguments are treated as audio file paths to pre-load.
-    for (int i = 1; i < argc; ++i) {
-        playlist.addTrack(argv[i]);
-        std::cout << "Added from args: " << argv[i] << "\n";
+    // Multi-language support: load a .qm translation file for the system locale.
+    QTranslator translator;
+    const QStringList uiLanguages = QLocale::system().uiLanguages();
+    for (const QString &locale : uiLanguages) {
+        const QString baseName = QStringLiteral("vibe-player_") + QLocale(locale).name();
+        if (translator.load(QStringLiteral(":/i18n/") + baseName)) {
+            app.installTranslator(&translator);
+            break;
+        }
     }
 
-    GuiApp app(player, playlist);
-    if (!app.init()) {
-        std::cerr << "[main] Failed to initialize GUI. Exiting.\n";
-        return 1;
-    }
-    app.run();
+    QQmlApplicationEngine engine;
 
-    return 0;
+    // Expose the C++ player controller to QML as "playerController".
+    PlayerController controller;
+    engine.rootContext()->setContextProperty(QStringLiteral("playerController"), &controller);
+
+    // Load the QML UI.
+    const QUrl url(QStringLiteral("qrc:/VibePlayer/main.qml"));
+    QObject::connect(
+        &engine, &QQmlApplicationEngine::objectCreated,
+        &app, [url](QObject *obj, const QUrl &objUrl) {
+            if (!obj && url == objUrl)
+                QCoreApplication::exit(-1);
+        },
+        Qt::QueuedConnection);
+    engine.load(url);
+
+    return app.exec();
 }
