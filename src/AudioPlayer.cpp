@@ -4,6 +4,11 @@
 #include "AudioPlayer.h"
 #include "miniaudio.h"
 #include <iostream>
+#include <string>
+
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 // Suppress verbose ALSA internal error messages on Linux.
 #if defined(__linux__)
@@ -68,12 +73,32 @@ bool AudioPlayer::loadTrack(const std::string& filePath) {
         pImpl->currentTrack.clear();
     }
 
+#if defined(_WIN32)
+    // On Windows, fopen() uses the ANSI codepage and cannot open files whose
+    // names contain characters outside that codepage (e.g. CJK characters).
+    // Convert the UTF-8 path to a wide string and use the wide-char API.
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, filePath.c_str(), -1, nullptr, 0);
+    if (wlen <= 0) {
+        std::cerr << "[AudioPlayer] Failed to convert file path to wide string.\n";
+        return false;
+    }
+    std::wstring widePath(static_cast<size_t>(wlen), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, filePath.c_str(), -1, &widePath[0], wlen);
+
+    ma_result result = ma_sound_init_from_file_w(
+        &pImpl->engine,
+        widePath.c_str(),
+        MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC,
+        NULL, NULL,
+        &pImpl->sound);
+#else
     ma_result result = ma_sound_init_from_file(
         &pImpl->engine,
         filePath.c_str(),
         MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_ASYNC,
         NULL, NULL,
         &pImpl->sound);
+#endif
 
     if (result != MA_SUCCESS) {
         std::cerr << "[AudioPlayer] Failed to load \"" << filePath

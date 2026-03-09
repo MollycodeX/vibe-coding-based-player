@@ -32,14 +32,14 @@ void PlayerController::setVolume(float v)
 
 QString PlayerController::currentTrack() const
 {
-    return QString::fromStdString(m_player.getCurrentTrack());
+    return QString::fromUtf8(m_player.getCurrentTrack().c_str());
 }
 
 QStringList PlayerController::trackList() const
 {
     QStringList list;
     for (const auto &t : m_playlist.getTracks())
-        list.append(QString::fromStdString(t));
+        list.append(QString::fromUtf8(t.c_str()));
     return list;
 }
 
@@ -117,7 +117,9 @@ void PlayerController::previous()
 
 void PlayerController::addTrack(const QString &filePath)
 {
-    m_playlist.addTrack(filePath.toStdString());
+    // Explicitly convert via UTF-8 so that CJK and other non-ASCII characters
+    // in file paths are preserved correctly.
+    m_playlist.addTrack(filePath.toUtf8().constData());
     emit playlistChanged();
     // Auto-load the first added track so currentTrack shows up immediately.
     if (m_playlist.trackCount() == 1) {
