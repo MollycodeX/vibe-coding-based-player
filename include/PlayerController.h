@@ -1,23 +1,46 @@
+// PlayerController.h
+// QObject bridge between the QML front-end and the miniaudio back-end.
+
 #ifndef PLAYERCONTROLLER_H
 #define PLAYERCONTROLLER_H
 
-#include <vector>
-#include <string>
+#include <QObject>
+#include <QString>
+#include "AudioPlayer.h"
+#include "Playlist.h"
 
-class PlayerController {
+class PlayerController : public QObject {
+    Q_OBJECT
+
+    // Properties exposed to QML
+    Q_PROPERTY(bool    isPlaying    READ isPlaying    NOTIFY playingChanged)
+    Q_PROPERTY(float   volume       READ volume       WRITE setVolume   NOTIFY volumeChanged)
+    Q_PROPERTY(QString currentTrack READ currentTrack NOTIFY currentTrackChanged)
+
 public:
-    PlayerController();
-    ~PlayerController();
-    void play();
-    void pause();
-    void next();
-    void previous();
-    void setVolume(int volume);
+    explicit PlayerController(QObject *parent = nullptr);
+
+    bool    isPlaying()    const;
+    float   volume()       const;
+    void    setVolume(float v);
+    QString currentTrack() const;
+
+    // Invokable from QML
+    Q_INVOKABLE void play();
+    Q_INVOKABLE void pause();
+    Q_INVOKABLE void stop();
+    Q_INVOKABLE void next();
+    Q_INVOKABLE void previous();
+    Q_INVOKABLE void addTrack(const QString &filePath);
+
+signals:
+    void playingChanged();
+    void volumeChanged();
+    void currentTrackChanged();
 
 private:
-    std::vector<std::string> playlist;
-    int currentTrackIndex;
-    int volume;
+    AudioPlayer m_player;
+    Playlist    m_playlist;
 };
 
 #endif // PLAYERCONTROLLER_H

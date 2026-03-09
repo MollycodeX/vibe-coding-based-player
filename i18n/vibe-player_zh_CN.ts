@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="zh_CN">
+<context>
+    <name>main</name>
+    <message>
+        <source>Vibe Player</source>
+        <translation>音乐播放器</translation>
+    </message>
+    <message>
+        <source>Now Playing: </source>
+        <translation>正在播放：</translation>
+    </message>
+    <message>
+        <source>No Track Loaded</source>
+        <translation>未加载曲目</translation>
+    </message>
+    <message>
+        <source>Previous</source>
+        <translation>上一曲</translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation>播放</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>暂停</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>下一曲</translation>
+    </message>
+    <message>
+        <source>Volume</source>
+        <translation>音量</translation>
+    </message>
+    <message>
+        <source>Audio file path...</source>
+        <translation>音频文件路径...</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>添加</translation>
+    </message>
+</context>
+</TS>
