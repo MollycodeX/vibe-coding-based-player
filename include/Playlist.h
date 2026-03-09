@@ -35,6 +35,10 @@ public:
 
     const std::vector<std::string>& getTracks() const;
 
+    // Jump directly to the track at the given index.
+    // Returns false (and leaves the cursor unchanged) when the index is invalid.
+    bool setCurrentIndex(int index);
+
 private:
     std::vector<std::string> tracks;
     int                      currentIdx;

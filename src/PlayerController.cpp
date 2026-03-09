@@ -29,6 +29,24 @@ QString PlayerController::currentTrack() const
     return QString::fromStdString(m_player.getCurrentTrack());
 }
 
+QStringList PlayerController::trackList() const
+{
+    QStringList list;
+    for (const auto &t : m_playlist.getTracks())
+        list.append(QString::fromStdString(t));
+    return list;
+}
+
+int PlayerController::trackCount() const
+{
+    return m_playlist.trackCount();
+}
+
+int PlayerController::currentIndex() const
+{
+    return m_playlist.currentIndex();
+}
+
 void PlayerController::play()
 {
     if (!m_player.getCurrentTrack().empty()) {
@@ -61,6 +79,7 @@ void PlayerController::next()
         m_player.play();
         emit currentTrackChanged();
         emit playingChanged();
+        emit playlistChanged();
     }
 }
 
@@ -72,15 +91,46 @@ void PlayerController::previous()
         m_player.play();
         emit currentTrackChanged();
         emit playingChanged();
+        emit playlistChanged();
     }
 }
 
 void PlayerController::addTrack(const QString &filePath)
 {
     m_playlist.addTrack(filePath.toStdString());
+    emit playlistChanged();
     // Auto-load the first added track so currentTrack shows up immediately.
     if (m_playlist.trackCount() == 1) {
         m_player.loadTrack(m_playlist.currentTrack());
         emit currentTrackChanged();
     }
+}
+
+void PlayerController::removeTrack(int index)
+{
+    if (index < 0 || index >= m_playlist.trackCount()) return;
+
+    bool removingCurrent = (index == m_playlist.currentIndex());
+    m_playlist.removeTrack(index);
+    emit playlistChanged();
+
+    if (removingCurrent) {
+        m_player.stop();
+        if (m_playlist.hasTrack()) {
+            m_player.loadTrack(m_playlist.currentTrack());
+        }
+        emit currentTrackChanged();
+        emit playingChanged();
+    }
+}
+
+void PlayerController::selectTrack(int index)
+{
+    if (!m_playlist.setCurrentIndex(index)) return;
+
+    m_player.loadTrack(m_playlist.currentTrack());
+    m_player.play();
+    emit currentTrackChanged();
+    emit playingChanged();
+    emit playlistChanged();
 }

@@ -1,5 +1,6 @@
 #include "player.hpp"
 #include "Playlist.h"
+#include "AudioDecoder.h"
 #include <cassert>
 #include <iostream>
 
@@ -80,6 +81,64 @@ static void testPlaylistClear() {
     std::cout << "  [PASS] clear\n";
 }
 
+static void testPlaylistSetCurrentIndex() {
+    Playlist pl;
+    pl.addTrack("a.mp3");
+    pl.addTrack("b.mp3");
+    pl.addTrack("c.mp3");
+
+    assert(pl.setCurrentIndex(2));
+    assert(pl.currentIndex() == 2);
+    assert(pl.currentTrack() == "c.mp3");
+
+    assert(pl.setCurrentIndex(0));
+    assert(pl.currentIndex() == 0);
+    assert(pl.currentTrack() == "a.mp3");
+
+    // Out-of-range indices should fail and leave the cursor unchanged.
+    assert(!pl.setCurrentIndex(-1));
+    assert(pl.currentIndex() == 0);
+    assert(!pl.setCurrentIndex(3));
+    assert(pl.currentIndex() == 0);
+    std::cout << "  [PASS] setCurrentIndex\n";
+}
+
+// ---------------------------------------------------------------------------
+// AudioDecoder unit tests
+// ---------------------------------------------------------------------------
+static void testAudioDecoderInit() {
+    AudioDecoder dec;
+    // Initializing with a valid path should succeed.
+    assert(dec.initialize("test.wav"));
+    // Initializing with nullptr should fail.
+    AudioDecoder nullPathDecoder;
+    assert(!nullPathDecoder.initialize(nullptr));
+    std::cout << "  [PASS] AudioDecoder initialize\n";
+}
+
+static void testAudioDecoderDecodeStub() {
+    AudioDecoder dec;
+    uint8_t* buf = nullptr;
+    int size = 0;
+    // Decoding without initialization should return -1.
+    assert(dec.decode(&buf, &size) == -1);
+    // Even after initialization the stub returns -1 (not yet implemented).
+    dec.initialize("test.wav");
+    assert(dec.decode(&buf, &size) == -1);
+    std::cout << "  [PASS] AudioDecoder decode stub\n";
+}
+
+static void testAudioDecoderCleanup() {
+    AudioDecoder dec;
+    dec.initialize("test.wav");
+    dec.cleanup();
+    // After cleanup, decode should fail.
+    uint8_t* buf = nullptr;
+    int size = 0;
+    assert(dec.decode(&buf, &size) == -1);
+    std::cout << "  [PASS] AudioDecoder cleanup\n";
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -94,6 +153,12 @@ int main() {
     testPlaylistNextPrev();
     testPlaylistRemove();
     testPlaylistClear();
+    testPlaylistSetCurrentIndex();
+
+    std::cout << "\nRunning AudioDecoder tests...\n";
+    testAudioDecoderInit();
+    testAudioDecoderDecodeStub();
+    testAudioDecoderCleanup();
 
     std::cout << "\nAll tests passed!\n";
     return 0;
