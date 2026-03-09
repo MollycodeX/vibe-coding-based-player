@@ -103,6 +103,33 @@ static void testPlaylistSetCurrentIndex() {
     std::cout << "  [PASS] setCurrentIndex\n";
 }
 
+static void testPlaylistUnicodePaths() {
+    Playlist pl;
+    // Chinese characters in file path
+    std::string chinesePath = "/music/\xe4\xb8\xad\xe6\x96\x87\xe6\xad\x8c\xe6\x9b\xb2.mp3";  // /music/中文歌曲.mp3
+    // Japanese characters in file path
+    std::string japanesePath = "/music/\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e.flac";  // /music/日本語.flac
+    // Mixed ASCII and CJK
+    std::string mixedPath = "/home/user/\xe9\x9f\xb3\xe6\xa5\xbd/track01.wav";  // /home/user/音楽/track01.wav
+
+    pl.addTrack(chinesePath);
+    pl.addTrack(japanesePath);
+    pl.addTrack(mixedPath);
+
+    assert(pl.trackCount() == 3);
+    assert(pl.currentTrack() == chinesePath);
+    assert(pl.nextTrack() == japanesePath);
+    assert(pl.nextTrack() == mixedPath);
+
+    // Verify round-trip: stored paths must be byte-identical to what was added.
+    const auto& tracks = pl.getTracks();
+    assert(tracks[0] == chinesePath);
+    assert(tracks[1] == japanesePath);
+    assert(tracks[2] == mixedPath);
+
+    std::cout << "  [PASS] Unicode (CJK) file paths\n";
+}
+
 // ---------------------------------------------------------------------------
 // AudioDecoder unit tests
 // ---------------------------------------------------------------------------
@@ -154,6 +181,7 @@ int main() {
     testPlaylistRemove();
     testPlaylistClear();
     testPlaylistSetCurrentIndex();
+    testPlaylistUnicodePaths();
 
     std::cout << "\nRunning AudioDecoder tests...\n";
     testAudioDecoderInit();
