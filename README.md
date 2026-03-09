@@ -1,4 +1,4 @@
-# vibe-coding-based-player
+# MSCPLAYER
 #这是基于Gemini，chatGPT和claude使用vibe coding做出的个人测试项目
 
 
