@@ -4,6 +4,9 @@
 #include "PlayerController.h"
 #include <QFileInfo>
 #include <QUrl>
+#include <QDir>
+#include <QStandardPaths>
+#include <QFile>
 
 static const QStringList audioExtensions = {
     "mp3", "wav", "flac", "ogg", "aac", "wma", "m4a", "opus"
@@ -43,6 +46,12 @@ PlayerController::PlayerController(QObject *parent)
             &PlayerController::onAcoustIdResultsReady);
     connect(&m_acoustIdClient, &AcoustIdClient::lookupFailed, this,
             &PlayerController::onAcoustIdFailed);
+
+    // Cover art provider
+    connect(&m_coverArtProvider, &CoverArtProvider::coverArtReady, this,
+            &PlayerController::onCoverArtReady);
+    connect(&m_coverArtProvider, &CoverArtProvider::coverArtFailed, this,
+            &PlayerController::onCoverArtFailed);
 }
 
 bool PlayerController::isPlaying() const
@@ -100,6 +109,18 @@ QString PlayerController::trackAlbum() const { return m_trackAlbum; }
 QString PlayerController::lyrics() const { return m_lyrics; }
 
 QVariantList PlayerController::metadataResults() const { return m_metadataResults; }
+
+QString PlayerController::albumArtUrl() const { return m_albumArtUrl; }
+
+bool PlayerController::embedAlbumArt() const { return m_embedAlbumArt; }
+
+void PlayerController::setEmbedAlbumArt(bool embed)
+{
+    if (m_embedAlbumArt != embed) {
+        m_embedAlbumArt = embed;
+        emit embedAlbumArtChanged();
+    }
+}
 
 bool PlayerController::fingerprintAvailable() const
 {
@@ -282,9 +303,12 @@ void PlayerController::clearMetadata()
     m_trackAlbum.clear();
     m_lyrics.clear();
     m_metadataResults.clear();
+    m_albumArtUrl.clear();
+    m_albumArtData.clear();
     emit metadataChanged();
     emit lyricsChanged();
     emit metadataResultsChanged();
+    emit albumArtChanged();
 }
 
 void PlayerController::onFingerprintReady(int duration, const QString &fingerprint)
@@ -361,6 +385,9 @@ void PlayerController::selectMetadataResult(int index)
     m_trackAlbum = selected.value(QStringLiteral("album")).toString();
     emit metadataChanged();
 
+    // Fetch album cover art.
+    fetchCoverArt(selected);
+
     // Look up lyrics using the selected metadata.
     if (!m_trackTitle.isEmpty())
         m_lyricsProvider.lookup(m_trackTitle, m_trackArtist);
@@ -374,7 +401,60 @@ void PlayerController::writeMetadataToFile()
         return;
     }
 
+    QByteArray coverData;
+    if (m_embedAlbumArt && !m_albumArtData.isEmpty())
+        coverData = m_albumArtData;
+
     bool ok = m_metadataWriter.write(path, m_trackTitle, m_trackArtist,
-                                     m_trackAlbum);
+                                     m_trackAlbum, coverData);
     emit metadataWritten(ok);
+}
+
+// ---------------------------------------------------------------------------
+// Cover art helpers
+// ---------------------------------------------------------------------------
+
+void PlayerController::fetchCoverArt(const QVariantMap &selected)
+{
+    // Clear previous cover art.
+    m_albumArtUrl.clear();
+    m_albumArtData.clear();
+    emit albumArtChanged();
+
+    // Try releaseId first (from MusicBrainz), then releaseGroupId (from AcoustID).
+    QString releaseId = selected.value(QStringLiteral("releaseId")).toString();
+    if (!releaseId.isEmpty()) {
+        m_coverArtProvider.fetchByReleaseId(releaseId);
+        return;
+    }
+    QString releaseGroupId =
+        selected.value(QStringLiteral("releaseGroupId")).toString();
+    if (!releaseGroupId.isEmpty()) {
+        m_coverArtProvider.fetchByReleaseGroupId(releaseGroupId);
+    }
+}
+
+void PlayerController::onCoverArtReady(const QByteArray &imageData)
+{
+    m_albumArtData = imageData;
+
+    // Save to a temporary file so the QML Image component can display it.
+    QString tmpDir =
+        QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    // Use a unique filename to avoid conflicts between instances.
+    QString tmpPath = tmpDir + QStringLiteral("/mscplayer_cover_%1.jpg")
+                                   .arg(reinterpret_cast<quintptr>(this));
+    QFile file(tmpPath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(imageData);
+        file.close();
+        m_albumArtUrl = QUrl::fromLocalFile(tmpPath).toString();
+    }
+
+    emit albumArtChanged();
+}
+
+void PlayerController::onCoverArtFailed(const QString & /*errorMessage*/)
+{
+    // Cover art not available; leave the URL empty.
 }

@@ -79,10 +79,9 @@ QList<MetadataResult> MetadataProvider::parseAllResults(const QByteArray &data)
         // Album (first release entry)
         QJsonArray releases = rec.value(QStringLiteral("releases")).toArray();
         if (!releases.isEmpty()) {
-            r.album = releases.first()
-                          .toObject()
-                          .value(QStringLiteral("title"))
-                          .toString();
+            QJsonObject releaseObj = releases.first().toObject();
+            r.album = releaseObj.value(QStringLiteral("title")).toString();
+            r.releaseId = releaseObj.value(QStringLiteral("id")).toString();
         }
 
         if (!r.title.isEmpty())
@@ -101,6 +100,7 @@ QVariantList MetadataProvider::toVariantList(const QList<MetadataResult> &result
         map[QStringLiteral("artist")] = r.artist;
         map[QStringLiteral("album")] = r.album;
         map[QStringLiteral("recordingId")] = r.recordingId;
+        map[QStringLiteral("releaseId")] = r.releaseId;
         map[QStringLiteral("score")] = r.score;
         list.append(map);
     }

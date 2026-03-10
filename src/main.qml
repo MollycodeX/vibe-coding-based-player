@@ -154,6 +154,26 @@ Window {
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
+
+            // Album cover art preview in dialog
+            Image {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 100
+                visible: playerController.albumArtUrl !== ""
+                source: playerController.albumArtUrl
+                fillMode: Image.PreserveAspectFit
+                cache: false
+            }
+
+            // Checkbox to embed album art
+            CheckBox {
+                id: embedAlbumArtCheckBox
+                text: qsTr("Embed album cover art")
+                visible: playerController.albumArtUrl !== ""
+                checked: playerController.embedAlbumArt
+                onCheckedChanged: playerController.embedAlbumArt = checked
+            }
         }
 
         onAccepted: playerController.writeMetadataToFile()
@@ -220,6 +240,26 @@ Window {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 2
+
+            // Album cover art display
+            Image {
+                id: albumArtImage
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 160
+                Layout.preferredHeight: 160
+                visible: playerController.albumArtUrl !== ""
+                source: playerController.albumArtUrl
+                fillMode: Image.PreserveAspectFit
+                cache: false
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.color: "#cccccc"
+                    border.width: 1
+                    radius: 4
+                }
+            }
 
             Text {
                 Layout.fillWidth: true

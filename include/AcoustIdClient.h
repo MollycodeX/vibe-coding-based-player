@@ -12,11 +12,12 @@
 #include <QVariantList>
 
 struct AcoustIdResult {
-    QString recordingId; // MusicBrainz recording MBID
+    QString recordingId;    // MusicBrainz recording MBID
     QString title;
     QString artist;
     QString album;
-    double score{0.0}; // AcoustID match confidence (0.0 – 1.0)
+    QString releaseGroupId; // MusicBrainz release-group MBID (used for cover art)
+    double score{0.0};      // AcoustID match confidence (0.0 – 1.0)
 };
 
 class AcoustIdClient : public QObject {

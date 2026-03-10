@@ -17,6 +17,7 @@
 #include "MetadataProvider.h"
 #include "LyricsProvider.h"
 #include "MetadataWriter.h"
+#include "CoverArtProvider.h"
 
 class PlayerController : public QObject {
     Q_OBJECT
@@ -42,6 +43,11 @@ class PlayerController : public QObject {
     Q_PROPERTY(bool fingerprintAvailable READ fingerprintAvailable CONSTANT)
     Q_PROPERTY(bool metadataWriteSupported READ metadataWriteSupported CONSTANT)
 
+    // Album cover art
+    Q_PROPERTY(QString albumArtUrl READ albumArtUrl NOTIFY albumArtChanged)
+    Q_PROPERTY(bool embedAlbumArt READ embedAlbumArt WRITE setEmbedAlbumArt
+                   NOTIFY embedAlbumArtChanged)
+
 public:
     explicit PlayerController(QObject *parent = nullptr);
 
@@ -65,6 +71,11 @@ public:
     QVariantList metadataResults() const;
     bool fingerprintAvailable() const;
     bool metadataWriteSupported() const;
+
+    // Album cover art
+    QString albumArtUrl() const;
+    bool embedAlbumArt() const;
+    void setEmbedAlbumArt(bool embed);
 
     // Invokable from QML
     Q_INVOKABLE void play();
@@ -97,6 +108,8 @@ signals:
     void lyricsChanged();
     void metadataResultsChanged();
     void metadataWritten(bool success);
+    void albumArtChanged();
+    void embedAlbumArtChanged();
 
 private slots:
     void onMetadataReady(const QString &artist, const QString &album,
@@ -107,10 +120,13 @@ private slots:
     void onFingerprintFailed(const QString &errorMessage);
     void onAcoustIdResultsReady(const QVariantList &results);
     void onAcoustIdFailed(const QString &errorMessage);
+    void onCoverArtReady(const QByteArray &imageData);
+    void onCoverArtFailed(const QString &errorMessage);
 
 private:
     void lookupTrackInfo();
     void clearMetadata();
+    void fetchCoverArt(const QVariantMap &selected);
 
     AudioPlayer        m_player;
     Playlist           m_playlist;
@@ -119,6 +135,7 @@ private:
     MetadataProvider   m_metadataProvider;
     LyricsProvider     m_lyricsProvider;
     MetadataWriter     m_metadataWriter;
+    CoverArtProvider   m_coverArtProvider;
 
     QString m_trackTitle;
     QString m_trackArtist;
@@ -126,6 +143,9 @@ private:
     QString m_lyrics;
 
     QVariantList m_metadataResults;
+    QString m_albumArtUrl;
+    QByteArray m_albumArtData;
+    bool m_embedAlbumArt{false};
 };
 
 #endif // PLAYERCONTROLLER_H

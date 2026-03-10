@@ -84,10 +84,9 @@ QList<AcoustIdResult> AcoustIdClient::parseResponse(const QByteArray &data)
             QJsonArray releaseGroups =
                 rec.value(QStringLiteral("releasegroups")).toArray();
             if (!releaseGroups.isEmpty()) {
-                r.album = releaseGroups.first()
-                              .toObject()
-                              .value(QStringLiteral("title"))
-                              .toString();
+                QJsonObject rgObj = releaseGroups.first().toObject();
+                r.album = rgObj.value(QStringLiteral("title")).toString();
+                r.releaseGroupId = rgObj.value(QStringLiteral("id")).toString();
             }
 
             if (!r.title.isEmpty())
@@ -107,6 +106,7 @@ QVariantList AcoustIdClient::toVariantList(const QList<AcoustIdResult> &results)
         map[QStringLiteral("title")] = r.title;
         map[QStringLiteral("artist")] = r.artist;
         map[QStringLiteral("album")] = r.album;
+        map[QStringLiteral("releaseGroupId")] = r.releaseGroupId;
         map[QStringLiteral("score")] = r.score;
         list.append(map);
     }
