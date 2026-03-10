@@ -11,7 +11,15 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # ---------------------------------------------------------------------------
-# Player logic library (AudioPlayer, Playlist, CLI UI, i18n).
+# Optional: TagLib for metadata writing
+# ---------------------------------------------------------------------------
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(TAGLIB IMPORTED_TARGET taglib)
+endif()
+
+# ---------------------------------------------------------------------------
+# Player logic library (AudioPlayer, Playlist, CLI UI, i18n, providers).
 # ---------------------------------------------------------------------------
 add_library(vibe_player_lib STATIC
     AudioPlayer.cpp
@@ -21,8 +29,14 @@ add_library(vibe_player_lib STATIC
     I18n.cpp
     MetadataProvider.cpp
     LyricsProvider.cpp
+    AudioFingerprinter.cpp
+    AcoustIdClient.cpp
+    MetadataWriter.cpp
     ${PROJECT_SOURCE_DIR}/include/MetadataProvider.h
     ${PROJECT_SOURCE_DIR}/include/LyricsProvider.h
+    ${PROJECT_SOURCE_DIR}/include/AudioFingerprinter.h
+    ${PROJECT_SOURCE_DIR}/include/AcoustIdClient.h
+    ${PROJECT_SOURCE_DIR}/include/MetadataWriter.h
 )
 target_include_directories(vibe_player_lib PUBLIC
     ${PROJECT_SOURCE_DIR}/include
@@ -32,6 +46,15 @@ target_link_libraries(vibe_player_lib PUBLIC
     Qt6::Core
     Qt6::Network
 )
+
+# Enable TagLib support if found.
+if(TAGLIB_FOUND)
+    target_compile_definitions(vibe_player_lib PUBLIC MSCPLAYER_HAS_TAGLIB)
+    target_link_libraries(vibe_player_lib PUBLIC PkgConfig::TAGLIB)
+    message(STATUS "TagLib found – metadata writing enabled")
+else()
+    message(STATUS "TagLib not found – metadata writing disabled")
+endif()
 
 # Platform-specific audio back-end dependencies.
 if(UNIX AND NOT APPLE)

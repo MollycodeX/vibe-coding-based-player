@@ -22,10 +22,27 @@ static QString trackNameFromPath(const QString &path)
 PlayerController::PlayerController(QObject *parent)
     : QObject(parent)
 {
+    // Metadata provider signals
     connect(&m_metadataProvider, &MetadataProvider::metadataReady, this,
             &PlayerController::onMetadataReady);
+    connect(&m_metadataProvider, &MetadataProvider::multipleResultsReady, this,
+            &PlayerController::onMultipleResultsReady);
+
+    // Lyrics provider
     connect(&m_lyricsProvider, &LyricsProvider::lyricsReady, this,
             &PlayerController::onLyricsReady);
+
+    // Audio fingerprinter
+    connect(&m_fingerprinter, &AudioFingerprinter::fingerprintReady, this,
+            &PlayerController::onFingerprintReady);
+    connect(&m_fingerprinter, &AudioFingerprinter::fingerprintFailed, this,
+            &PlayerController::onFingerprintFailed);
+
+    // AcoustID client
+    connect(&m_acoustIdClient, &AcoustIdClient::resultsReady, this,
+            &PlayerController::onAcoustIdResultsReady);
+    connect(&m_acoustIdClient, &AcoustIdClient::lookupFailed, this,
+            &PlayerController::onAcoustIdFailed);
 }
 
 bool PlayerController::isPlaying() const
@@ -81,6 +98,18 @@ QString PlayerController::trackTitle() const { return m_trackTitle; }
 QString PlayerController::trackArtist() const { return m_trackArtist; }
 QString PlayerController::trackAlbum() const { return m_trackAlbum; }
 QString PlayerController::lyrics() const { return m_lyrics; }
+
+QVariantList PlayerController::metadataResults() const { return m_metadataResults; }
+
+bool PlayerController::fingerprintAvailable() const
+{
+    return AudioFingerprinter::isAvailable();
+}
+
+bool PlayerController::metadataWriteSupported() const
+{
+    return MetadataWriter::isSupported();
+}
 
 void PlayerController::play()
 {
@@ -222,6 +251,10 @@ void PlayerController::updatePosition()
     emit positionChanged();
 }
 
+// ---------------------------------------------------------------------------
+// Metadata lookup orchestration
+// ---------------------------------------------------------------------------
+
 void PlayerController::lookupTrackInfo()
 {
     QString path = currentTrack();
@@ -230,8 +263,16 @@ void PlayerController::lookupTrackInfo()
 
     clearMetadata();
 
-    QString name = trackNameFromPath(path);
-    m_metadataProvider.lookup(name);
+    // Strategy: try audio fingerprinting first (works even without metadata).
+    // If fpcalc is available, compute fingerprint → AcoustID → results.
+    // Otherwise, fall back to filename-based MusicBrainz search.
+    if (AudioFingerprinter::isAvailable()) {
+        m_fingerprinter.compute(path);
+    } else {
+        // Fallback: search by filename
+        QString name = trackNameFromPath(path);
+        m_metadataProvider.lookup(name);
+    }
 }
 
 void PlayerController::clearMetadata()
@@ -240,8 +281,54 @@ void PlayerController::clearMetadata()
     m_trackArtist.clear();
     m_trackAlbum.clear();
     m_lyrics.clear();
+    m_metadataResults.clear();
     emit metadataChanged();
     emit lyricsChanged();
+    emit metadataResultsChanged();
+}
+
+void PlayerController::onFingerprintReady(int duration, const QString &fingerprint)
+{
+    // Send fingerprint to AcoustID for identification.
+    m_acoustIdClient.lookup(duration, fingerprint);
+}
+
+void PlayerController::onFingerprintFailed(const QString & /*errorMessage*/)
+{
+    // Fallback to filename-based MusicBrainz search.
+    QString path = currentTrack();
+    if (!path.isEmpty()) {
+        QString name = trackNameFromPath(path);
+        m_metadataProvider.lookup(name);
+    }
+}
+
+void PlayerController::onAcoustIdResultsReady(const QVariantList &results)
+{
+    // AcoustID returned results – expose them for user selection.
+    m_metadataResults = results;
+    emit metadataResultsChanged();
+
+    // Auto-select the first (highest-scoring) result.
+    if (!results.isEmpty()) {
+        selectMetadataResult(0);
+    }
+}
+
+void PlayerController::onAcoustIdFailed(const QString & /*errorMessage*/)
+{
+    // AcoustID failed – fall back to filename-based search.
+    QString path = currentTrack();
+    if (!path.isEmpty()) {
+        QString name = trackNameFromPath(path);
+        m_metadataProvider.lookup(name);
+    }
+}
+
+void PlayerController::onMultipleResultsReady(const QVariantList &results)
+{
+    m_metadataResults = results;
+    emit metadataResultsChanged();
 }
 
 void PlayerController::onMetadataReady(const QString &artist, const QString &album,
@@ -261,4 +348,33 @@ void PlayerController::onLyricsReady(const QString &plainLyrics,
 {
     m_lyrics = plainLyrics;
     emit lyricsChanged();
+}
+
+void PlayerController::selectMetadataResult(int index)
+{
+    if (index < 0 || index >= m_metadataResults.size())
+        return;
+
+    QVariantMap selected = m_metadataResults.at(index).toMap();
+    m_trackTitle = selected.value(QStringLiteral("title")).toString();
+    m_trackArtist = selected.value(QStringLiteral("artist")).toString();
+    m_trackAlbum = selected.value(QStringLiteral("album")).toString();
+    emit metadataChanged();
+
+    // Look up lyrics using the selected metadata.
+    if (!m_trackTitle.isEmpty())
+        m_lyricsProvider.lookup(m_trackTitle, m_trackArtist);
+}
+
+void PlayerController::writeMetadataToFile()
+{
+    QString path = currentTrack();
+    if (path.isEmpty() || m_trackTitle.isEmpty()) {
+        emit metadataWritten(false);
+        return;
+    }
+
+    bool ok = m_metadataWriter.write(path, m_trackTitle, m_trackArtist,
+                                     m_trackAlbum);
+    emit metadataWritten(ok);
 }
