@@ -441,7 +441,9 @@ void PlayerController::onCoverArtReady(const QByteArray &imageData)
     // Save to a temporary file so the QML Image component can display it.
     QString tmpDir =
         QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-    QString tmpPath = tmpDir + QStringLiteral("/mscplayer_cover.jpg");
+    // Use a unique filename to avoid conflicts between instances.
+    QString tmpPath = tmpDir + QStringLiteral("/mscplayer_cover_%1.jpg")
+                                   .arg(reinterpret_cast<quintptr>(this));
     QFile file(tmpPath);
     if (file.open(QIODevice::WriteOnly)) {
         file.write(imageData);

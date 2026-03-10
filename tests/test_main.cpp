@@ -524,7 +524,7 @@ static void testMetadataProviderVariantListIncludesReleaseId() {
 // AcoustIdClient releaseGroupId extraction test
 // ---------------------------------------------------------------------------
 static void testAcoustIdParseReleaseGroupId() {
-    QByteArray json = R"({
+    QByteArray json = R"JSON({
         "status": "ok",
         "results": [{
             "score": 0.95,
@@ -535,7 +535,7 @@ static void testAcoustIdParseReleaseGroupId() {
                 "releasegroups": [{"id": "rg-mbid-456", "title": "Test Album"}]
             }]
         }]
-    })";
+    })JSON";
 
     QList<AcoustIdResult> results = AcoustIdClient::parseResponse(json);
     assert(results.size() == 1);
