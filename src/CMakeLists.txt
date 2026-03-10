@@ -19,12 +19,18 @@ add_library(vibe_player_lib STATIC
     Playlist.cpp
     UI.cpp
     I18n.cpp
+    MetadataProvider.cpp
+    LyricsProvider.cpp
+    ${PROJECT_SOURCE_DIR}/include/MetadataProvider.h
+    ${PROJECT_SOURCE_DIR}/include/LyricsProvider.h
 )
 target_include_directories(vibe_player_lib PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(vibe_player_lib PUBLIC
     miniaudio_lib
+    Qt6::Core
+    Qt6::Network
 )
 
 # Platform-specific audio back-end dependencies.

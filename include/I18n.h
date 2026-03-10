@@ -41,6 +41,12 @@ struct I18nStrings {
     // Errors / notices
     const char* ENGINE_NOT_READY;
     const char* LOAD_FAILED;
+
+    // Metadata & lyrics
+    const char* LYRICS;
+    const char* NO_LYRICS;
+    const char* ARTIST;
+    const char* ALBUM;
 };
 
 enum class Language { EN, ZH };

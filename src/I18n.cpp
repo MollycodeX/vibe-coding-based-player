@@ -34,6 +34,11 @@ static const I18nStrings EN = {
 
     /* ENGINE_NOT_READY  */ "Warning: audio engine failed to initialize.",
     /* LOAD_FAILED       */ "Failed to load track.",
+
+    /* LYRICS            */ "Lyrics",
+    /* NO_LYRICS         */ "(no lyrics available)",
+    /* ARTIST            */ "Artist",
+    /* ALBUM             */ "Album",
 };
 
 // ---------------------------------------------------------------------------
@@ -67,6 +72,11 @@ static const I18nStrings ZH = {
 
     /* ENGINE_NOT_READY  */ "\xe8\xad\xa6\xe5\x91\x8a\xef\xbc\x9a\xe9\x9f\xb3\xe9\xa2\x91\xe5\xbc\x95\xe6\x93\x8e\xe5\x88\x9d\xe5\xa7\x8b\xe5\x8c\x96\xe5\xa4\xb1\xe8\xb4\xa5\xe3\x80\x82",
     /* LOAD_FAILED       */ "\xe5\x8a\xa0\xe8\xbd\xbd\xe6\x9b\xb2\xe7\x9b\xae\xe5\xa4\xb1\xe8\xb4\xa5\xe3\x80\x82",
+
+    /* LYRICS            */ "\xe6\xad\x8c\xe8\xaf\x8d",           // 歌词
+    /* NO_LYRICS         */ "(\xe6\x9a\x82\xe6\x97\xa0\xe6\xad\x8c\xe8\xaf\x8d)", // (暂无歌词)
+    /* ARTIST            */ "\xe8\x89\xba\xe6\x9c\xaf\xe5\xae\xb6", // 艺术家
+    /* ALBUM             */ "\xe4\xb8\x93\xe8\xbe\x91",           // 专辑
 };
 
 // ---------------------------------------------------------------------------
