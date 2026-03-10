@@ -59,5 +59,17 @@
         <source>(playlist is empty)</source>
         <translation>(播放列表为空)</translation>
     </message>
+    <message>
+        <source>Feature Unavailable</source>
+        <translation>功能不可用</translation>
+    </message>
+    <message>
+        <source>Metadata writing is not available in this build because TagLib was not found at compile time.</source>
+        <translation>此版本未启用元数据写入功能，因为编译时未找到 TagLib 库。</translation>
+    </message>
+    <message>
+        <source>To enable this feature, install TagLib (e.g. libtag1-dev on Ubuntu) and rebuild the application.</source>
+        <translation>要启用此功能，请安装 TagLib（例如在 Ubuntu 上安装 libtag1-dev），然后重新编译应用程序。</translation>
+    </message>
 </context>
 </TS>

@@ -18,6 +18,18 @@ if(PkgConfig_FOUND)
     pkg_check_modules(TAGLIB IMPORTED_TARGET taglib)
 endif()
 
+# Fallback: try CMake config-mode find_package (works when TagLib ships a
+# TagLibConfig.cmake but pkg-config metadata is missing or PkgConfig itself
+# is unavailable).
+if(NOT TAGLIB_FOUND)
+    find_package(TagLib CONFIG QUIET)
+    if(TagLib_FOUND)
+        set(TAGLIB_FOUND TRUE)
+        # TagLib's CMake config exports a TagLib::tag target.
+        set(TAGLIB_CMAKE_TARGET TagLib::tag)
+    endif()
+endif()
+
 # ---------------------------------------------------------------------------
 # Player logic library (AudioPlayer, Playlist, CLI UI, i18n, providers).
 # ---------------------------------------------------------------------------
@@ -50,7 +62,11 @@ target_link_libraries(vibe_player_lib PUBLIC
 # Enable TagLib support if found.
 if(TAGLIB_FOUND)
     target_compile_definitions(vibe_player_lib PUBLIC MSCPLAYER_HAS_TAGLIB)
-    target_link_libraries(vibe_player_lib PUBLIC PkgConfig::TAGLIB)
+    if(TAGLIB_CMAKE_TARGET)
+        target_link_libraries(vibe_player_lib PUBLIC ${TAGLIB_CMAKE_TARGET})
+    else()
+        target_link_libraries(vibe_player_lib PUBLIC PkgConfig::TAGLIB)
+    endif()
     message(STATUS "TagLib found – metadata writing enabled")
 else()
     message(STATUS "TagLib not found – metadata writing disabled")

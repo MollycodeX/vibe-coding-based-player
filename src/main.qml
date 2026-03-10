@@ -159,6 +159,35 @@ Window {
         onAccepted: playerController.writeMetadataToFile()
     }
 
+    // -----------------------------------------------------------------------
+    // TagLib-not-available information dialog
+    // -----------------------------------------------------------------------
+    Dialog {
+        id: taglibMissingDialog
+        title: qsTr("Feature Unavailable")
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 40, 360)
+        standardButtons: Dialog.Ok
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 8
+
+            Label {
+                text: qsTr("Metadata writing is not available in this build because TagLib was not found at compile time.")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("To enable this feature, install TagLib (e.g. libtag1-dev on Ubuntu) and rebuild the application.")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+                color: "#666666"
+            }
+        }
+    }
+
     // Listen for metadataResults changes to auto-show selection dialog.
     Connections {
         target: playerController
@@ -235,8 +264,12 @@ Window {
                 Button {
                     text: qsTr("Save to File")
                     font.pointSize: 9
-                    visible: playerController.metadataWriteSupported
-                    onClicked: writeMetadataDialog.open()
+                    onClicked: {
+                        if (playerController.metadataWriteSupported)
+                            writeMetadataDialog.open()
+                        else
+                            taglibMissingDialog.open()
+                    }
                 }
             }
 
