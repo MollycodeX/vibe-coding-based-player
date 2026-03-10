@@ -1,6 +1,10 @@
 #include "player.hpp"
 #include "Playlist.h"
 #include "AudioDecoder.h"
+#include "MetadataProvider.h"
+#include "LyricsProvider.h"
+#include <QUrl>
+#include <QUrlQuery>
 #include <cassert>
 #include <iostream>
 
@@ -167,6 +171,96 @@ static void testAudioDecoderCleanup() {
 }
 
 // ---------------------------------------------------------------------------
+// MetadataProvider unit tests (URL building & JSON parsing – no network)
+// ---------------------------------------------------------------------------
+static void testMetadataProviderBuildUrl() {
+    QUrl url = MetadataProvider::buildSearchUrl("Bohemian Rhapsody");
+    assert(url.host() == "musicbrainz.org");
+    assert(url.path() == "/ws/2/recording");
+    QUrlQuery q(url);
+    assert(q.hasQueryItem("query"));
+    assert(q.queryItemValue("query") == "Bohemian Rhapsody");
+    assert(q.queryItemValue("fmt") == "json");
+    assert(q.queryItemValue("limit") == "1");
+    std::cout << "  [PASS] MetadataProvider::buildSearchUrl\n";
+}
+
+static void testMetadataProviderParseResponse() {
+    // Minimal MusicBrainz-like JSON
+    QByteArray json = R"({
+        "recordings": [{
+            "title": "Bohemian Rhapsody",
+            "artist-credit": [{"artist": {"name": "Queen"}}],
+            "releases": [{"title": "A Night at the Opera"}]
+        }]
+    })";
+    QString artist, album, title;
+    assert(MetadataProvider::parseResponse(json, artist, album, title));
+    assert(title == "Bohemian Rhapsody");
+    assert(artist == "Queen");
+    assert(album == "A Night at the Opera");
+    std::cout << "  [PASS] MetadataProvider::parseResponse (valid)\n";
+}
+
+static void testMetadataProviderParseEmpty() {
+    // Empty recordings array
+    QByteArray json = R"({"recordings": []})";
+    QString artist, album, title;
+    assert(!MetadataProvider::parseResponse(json, artist, album, title));
+
+    // Invalid JSON
+    QByteArray badJson = "not json";
+    assert(!MetadataProvider::parseResponse(badJson, artist, album, title));
+    std::cout << "  [PASS] MetadataProvider::parseResponse (empty/invalid)\n";
+}
+
+// ---------------------------------------------------------------------------
+// LyricsProvider unit tests (URL building & JSON parsing – no network)
+// ---------------------------------------------------------------------------
+static void testLyricsProviderBuildUrl() {
+    QUrl url = LyricsProvider::buildSearchUrl("Bohemian Rhapsody", "Queen");
+    assert(url.host() == "lrclib.net");
+    assert(url.path() == "/api/search");
+    QUrlQuery q(url);
+    assert(q.queryItemValue("track_name") == "Bohemian Rhapsody");
+    assert(q.queryItemValue("artist_name") == "Queen");
+    std::cout << "  [PASS] LyricsProvider::buildSearchUrl\n";
+}
+
+static void testLyricsProviderBuildUrlNoArtist() {
+    QUrl url = LyricsProvider::buildSearchUrl("Bohemian Rhapsody", "");
+    QUrlQuery q(url);
+    assert(q.hasQueryItem("track_name"));
+    assert(!q.hasQueryItem("artist_name"));
+    std::cout << "  [PASS] LyricsProvider::buildSearchUrl (no artist)\n";
+}
+
+static void testLyricsProviderParseResponse() {
+    // LRCLIB-like JSON array
+    QByteArray json = R"([{
+        "plainLyrics": "Is this the real life?\nIs this just fantasy?",
+        "syncedLyrics": "[00:00.50] Is this the real life?\n[00:03.20] Is this just fantasy?"
+    }])";
+    QString plain, synced;
+    assert(LyricsProvider::parseResponse(json, plain, synced));
+    assert(plain.contains("Is this the real life?"));
+    assert(synced.contains("[00:00.50]"));
+    std::cout << "  [PASS] LyricsProvider::parseResponse (valid)\n";
+}
+
+static void testLyricsProviderParseEmpty() {
+    // Empty array
+    QByteArray json = "[]";
+    QString plain, synced;
+    assert(!LyricsProvider::parseResponse(json, plain, synced));
+
+    // Invalid JSON
+    QByteArray badJson = "{{{{";
+    assert(!LyricsProvider::parseResponse(badJson, plain, synced));
+    std::cout << "  [PASS] LyricsProvider::parseResponse (empty/invalid)\n";
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 int main() {
@@ -187,6 +281,17 @@ int main() {
     testAudioDecoderInit();
     testAudioDecoderDecodeStub();
     testAudioDecoderCleanup();
+
+    std::cout << "\nRunning MetadataProvider tests...\n";
+    testMetadataProviderBuildUrl();
+    testMetadataProviderParseResponse();
+    testMetadataProviderParseEmpty();
+
+    std::cout << "\nRunning LyricsProvider tests...\n";
+    testLyricsProviderBuildUrl();
+    testLyricsProviderBuildUrlNoArtist();
+    testLyricsProviderParseResponse();
+    testLyricsProviderParseEmpty();
 
     std::cout << "\nAll tests passed!\n";
     return 0;

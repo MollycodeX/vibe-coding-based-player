@@ -7,9 +7,9 @@ import QtQuick.Dialogs
 Window {
     id: root
     width: 480
-    height: 560
+    height: 700
     minimumWidth: 360
-    minimumHeight: 440
+    minimumHeight: 520
     visible: true
     title: qsTr("Vibe Player")
 
@@ -54,15 +54,37 @@ Window {
         anchors.margins: 16
         spacing: 12
 
-        // Current track display
-        Text {
+        // Current track display with metadata
+        ColumnLayout {
             Layout.fillWidth: true
-            text: playerController.currentTrack !== ""
-                  ? qsTr("Now Playing: ") + playerController.currentTrack
-                  : qsTr("No Track Loaded")
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideMiddle
-            font.pointSize: 11
+            spacing: 2
+
+            Text {
+                Layout.fillWidth: true
+                text: {
+                    if (playerController.trackTitle !== "")
+                        return playerController.trackTitle
+                    if (playerController.currentTrack !== "")
+                        return qsTr("Now Playing: ") + playerController.currentTrack
+                    return qsTr("No Track Loaded")
+                }
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideMiddle
+                font.pointSize: 12
+                font.bold: true
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: playerController.trackArtist !== ""
+                text: playerController.trackArtist
+                      + (playerController.trackAlbum !== ""
+                         ? " — " + playerController.trackAlbum : "")
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideMiddle
+                font.pointSize: 10
+                color: "#555555"
+            }
         }
 
         // Progress bar
@@ -153,6 +175,57 @@ Window {
             Button {
                 text: qsTr("Add Folder...")
                 onClicked: folderDialog.open()
+            }
+        }
+
+        // Lyrics panel (collapsible)
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: qsTr("Lyrics")
+                    font.bold: true
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    id: lyricsToggle
+                    text: lyricsPane.visible ? "▲" : "▼"
+                    flat: true
+                    font.pointSize: 9
+                    implicitWidth: 32
+                    Accessible.name: lyricsPane.visible ? qsTr("Collapse lyrics") : qsTr("Expand lyrics")
+                    onClicked: lyricsPane.visible = !lyricsPane.visible
+                }
+            }
+
+            ScrollView {
+                id: lyricsPane
+                Layout.fillWidth: true
+                Layout.preferredHeight: 120
+                visible: playerController.lyrics !== ""
+                clip: true
+
+                TextArea {
+                    readOnly: true
+                    wrapMode: TextEdit.Wrap
+                    text: playerController.lyrics
+                    font.pointSize: 10
+                    color: "#333333"
+                    background: Rectangle {
+                        color: "#f8f8f8"
+                        radius: 4
+                    }
+                }
+            }
+
+            Label {
+                visible: playerController.lyrics === "" && playerController.currentTrack !== ""
+                text: qsTr("(no lyrics available)")
+                color: "#999999"
+                font.pointSize: 9
             }
         }
 

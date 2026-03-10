@@ -9,9 +9,23 @@ static const QStringList audioExtensions = {
     "mp3", "wav", "flac", "ogg", "aac", "wma", "m4a", "opus"
 };
 
+// Extracts a human-readable track name from a file path by stripping the
+// directory prefix and the file extension.
+static QString trackNameFromPath(const QString &path)
+{
+    QString name = QFileInfo(path).completeBaseName();
+    // Many files use "Artist - Title" convention; return as-is so the
+    // metadata provider can search for it.
+    return name;
+}
+
 PlayerController::PlayerController(QObject *parent)
     : QObject(parent)
 {
+    connect(&m_metadataProvider, &MetadataProvider::metadataReady, this,
+            &PlayerController::onMetadataReady);
+    connect(&m_lyricsProvider, &LyricsProvider::lyricsReady, this,
+            &PlayerController::onLyricsReady);
 }
 
 bool PlayerController::isPlaying() const
@@ -63,6 +77,11 @@ float PlayerController::duration() const
     return m_player.getDurationSeconds();
 }
 
+QString PlayerController::trackTitle() const { return m_trackTitle; }
+QString PlayerController::trackArtist() const { return m_trackArtist; }
+QString PlayerController::trackAlbum() const { return m_trackAlbum; }
+QString PlayerController::lyrics() const { return m_lyrics; }
+
 void PlayerController::play()
 {
     if (!m_player.getCurrentTrack().empty()) {
@@ -72,6 +91,7 @@ void PlayerController::play()
         m_player.play();
         emit currentTrackChanged();
         emit durationChanged();
+        lookupTrackInfo();
     }
     emit playingChanged();
 }
@@ -99,6 +119,7 @@ void PlayerController::next()
         emit playingChanged();
         emit playlistChanged();
         emit durationChanged();
+        lookupTrackInfo();
     }
 }
 
@@ -112,6 +133,7 @@ void PlayerController::previous()
         emit playingChanged();
         emit playlistChanged();
         emit durationChanged();
+        lookupTrackInfo();
     }
 }
 
@@ -126,6 +148,7 @@ void PlayerController::addTrack(const QString &filePath)
         m_player.loadTrack(m_playlist.currentTrack());
         emit currentTrackChanged();
         emit durationChanged();
+        lookupTrackInfo();
     }
 }
 
@@ -165,6 +188,9 @@ void PlayerController::removeTrack(int index)
         m_player.stop();
         if (m_playlist.hasTrack()) {
             m_player.loadTrack(m_playlist.currentTrack());
+            lookupTrackInfo();
+        } else {
+            clearMetadata();
         }
         emit currentTrackChanged();
         emit playingChanged();
@@ -182,6 +208,7 @@ void PlayerController::selectTrack(int index)
     emit playingChanged();
     emit playlistChanged();
     emit durationChanged();
+    lookupTrackInfo();
 }
 
 void PlayerController::seek(float seconds)
@@ -193,4 +220,45 @@ void PlayerController::seek(float seconds)
 void PlayerController::updatePosition()
 {
     emit positionChanged();
+}
+
+void PlayerController::lookupTrackInfo()
+{
+    QString path = currentTrack();
+    if (path.isEmpty())
+        return;
+
+    clearMetadata();
+
+    QString name = trackNameFromPath(path);
+    m_metadataProvider.lookup(name);
+}
+
+void PlayerController::clearMetadata()
+{
+    m_trackTitle.clear();
+    m_trackArtist.clear();
+    m_trackAlbum.clear();
+    m_lyrics.clear();
+    emit metadataChanged();
+    emit lyricsChanged();
+}
+
+void PlayerController::onMetadataReady(const QString &artist, const QString &album,
+                                       const QString &title)
+{
+    m_trackTitle = title;
+    m_trackArtist = artist;
+    m_trackAlbum = album;
+    emit metadataChanged();
+
+    // Now that we have structured metadata, look up lyrics with artist info.
+    m_lyricsProvider.lookup(title, artist);
+}
+
+void PlayerController::onLyricsReady(const QString &plainLyrics,
+                                     const QString & /*syncedLyrics*/)
+{
+    m_lyrics = plainLyrics;
+    emit lyricsChanged();
 }

@@ -11,6 +11,8 @@
 #include <QUrl>
 #include "AudioPlayer.h"
 #include "Playlist.h"
+#include "MetadataProvider.h"
+#include "LyricsProvider.h"
 
 class PlayerController : public QObject {
     Q_OBJECT
@@ -25,6 +27,12 @@ class PlayerController : public QObject {
     Q_PROPERTY(float       position     READ position     NOTIFY positionChanged)
     Q_PROPERTY(float       duration     READ duration     NOTIFY durationChanged)
 
+    // Online metadata properties
+    Q_PROPERTY(QString trackTitle  READ trackTitle  NOTIFY metadataChanged)
+    Q_PROPERTY(QString trackArtist READ trackArtist NOTIFY metadataChanged)
+    Q_PROPERTY(QString trackAlbum  READ trackAlbum  NOTIFY metadataChanged)
+    Q_PROPERTY(QString lyrics      READ lyrics      NOTIFY lyricsChanged)
+
 public:
     explicit PlayerController(QObject *parent = nullptr);
 
@@ -37,6 +45,12 @@ public:
     int         currentIndex() const;
     float       position()     const;
     float       duration()     const;
+
+    // Online metadata accessors
+    QString trackTitle()  const;
+    QString trackArtist() const;
+    QString trackAlbum()  const;
+    QString lyrics()      const;
 
     // Invokable from QML
     Q_INVOKABLE void play();
@@ -60,10 +74,27 @@ signals:
     void playlistChanged();
     void positionChanged();
     void durationChanged();
+    void metadataChanged();
+    void lyricsChanged();
+
+private slots:
+    void onMetadataReady(const QString &artist, const QString &album,
+                         const QString &title);
+    void onLyricsReady(const QString &plainLyrics, const QString &syncedLyrics);
 
 private:
-    AudioPlayer m_player;
-    Playlist    m_playlist;
+    void lookupTrackInfo();
+    void clearMetadata();
+
+    AudioPlayer      m_player;
+    Playlist         m_playlist;
+    MetadataProvider m_metadataProvider;
+    LyricsProvider   m_lyricsProvider;
+
+    QString m_trackTitle;
+    QString m_trackArtist;
+    QString m_trackAlbum;
+    QString m_lyrics;
 };
 
 #endif // PLAYERCONTROLLER_H
