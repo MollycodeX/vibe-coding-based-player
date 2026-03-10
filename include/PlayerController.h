@@ -9,10 +9,14 @@
 #include <QStringList>
 #include <QDir>
 #include <QUrl>
+#include <QVariantList>
 #include "AudioPlayer.h"
 #include "Playlist.h"
+#include "AudioFingerprinter.h"
+#include "AcoustIdClient.h"
 #include "MetadataProvider.h"
 #include "LyricsProvider.h"
+#include "MetadataWriter.h"
 
 class PlayerController : public QObject {
     Q_OBJECT
@@ -33,6 +37,11 @@ class PlayerController : public QObject {
     Q_PROPERTY(QString trackAlbum  READ trackAlbum  NOTIFY metadataChanged)
     Q_PROPERTY(QString lyrics      READ lyrics      NOTIFY lyricsChanged)
 
+    // Multiple-result metadata selection
+    Q_PROPERTY(QVariantList metadataResults READ metadataResults NOTIFY metadataResultsChanged)
+    Q_PROPERTY(bool fingerprintAvailable READ fingerprintAvailable CONSTANT)
+    Q_PROPERTY(bool metadataWriteSupported READ metadataWriteSupported CONSTANT)
+
 public:
     explicit PlayerController(QObject *parent = nullptr);
 
@@ -52,6 +61,11 @@ public:
     QString trackAlbum()  const;
     QString lyrics()      const;
 
+    // Multi-result support
+    QVariantList metadataResults() const;
+    bool fingerprintAvailable() const;
+    bool metadataWriteSupported() const;
+
     // Invokable from QML
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
@@ -67,6 +81,11 @@ public:
     Q_INVOKABLE void seek(float seconds);
     Q_INVOKABLE void updatePosition();
 
+    /// Select a metadata result from the multi-result list by index.
+    Q_INVOKABLE void selectMetadataResult(int index);
+    /// Write the currently displayed metadata into the audio file.
+    Q_INVOKABLE void writeMetadataToFile();
+
 signals:
     void playingChanged();
     void volumeChanged();
@@ -76,25 +95,37 @@ signals:
     void durationChanged();
     void metadataChanged();
     void lyricsChanged();
+    void metadataResultsChanged();
+    void metadataWritten(bool success);
 
 private slots:
     void onMetadataReady(const QString &artist, const QString &album,
                          const QString &title);
+    void onMultipleResultsReady(const QVariantList &results);
     void onLyricsReady(const QString &plainLyrics, const QString &syncedLyrics);
+    void onFingerprintReady(int duration, const QString &fingerprint);
+    void onFingerprintFailed(const QString &errorMessage);
+    void onAcoustIdResultsReady(const QVariantList &results);
+    void onAcoustIdFailed(const QString &errorMessage);
 
 private:
     void lookupTrackInfo();
     void clearMetadata();
 
-    AudioPlayer      m_player;
-    Playlist         m_playlist;
-    MetadataProvider m_metadataProvider;
-    LyricsProvider   m_lyricsProvider;
+    AudioPlayer        m_player;
+    Playlist           m_playlist;
+    AudioFingerprinter m_fingerprinter;
+    AcoustIdClient     m_acoustIdClient;
+    MetadataProvider   m_metadataProvider;
+    LyricsProvider     m_lyricsProvider;
+    MetadataWriter     m_metadataWriter;
 
     QString m_trackTitle;
     QString m_trackArtist;
     QString m_trackAlbum;
     QString m_lyrics;
+
+    QVariantList m_metadataResults;
 };
 
 #endif // PLAYERCONTROLLER_H

@@ -49,6 +49,139 @@ Window {
         onAccepted: playerController.addFolderUrl(selectedFolder)
     }
 
+    // -----------------------------------------------------------------------
+    // Metadata selection dialog – shown when multiple results are returned
+    // -----------------------------------------------------------------------
+    Dialog {
+        id: metadataSelectionDialog
+        title: qsTr("Select Metadata")
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 40, 420)
+        height: Math.min(root.height - 80, 400)
+        standardButtons: Dialog.Cancel
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 8
+
+            Label {
+                text: qsTr("Multiple results found. Please select the correct one:")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            ListView {
+                id: resultsList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: playerController.metadataResults
+
+                delegate: Rectangle {
+                    width: resultsList.width
+                    height: 56
+                    color: resultMouseArea.containsMouse ? "#e8f0fe" : (index % 2 === 0 ? "#ffffff" : "#f8f8f8")
+                    radius: 4
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 2
+
+                        Label {
+                            text: modelData.title || qsTr("(unknown title)")
+                            font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            text: (modelData.artist || qsTr("Unknown Artist"))
+                                  + (modelData.album ? " — " + modelData.album : "")
+                            font.pointSize: 9
+                            color: "#666666"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    MouseArea {
+                        id: resultMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            playerController.selectMetadataResult(index)
+                            metadataSelectionDialog.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Write metadata confirmation dialog
+    // -----------------------------------------------------------------------
+    Dialog {
+        id: writeMetadataDialog
+        title: qsTr("Save Metadata")
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 40, 360)
+        standardButtons: Dialog.Yes | Dialog.No
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 8
+
+            Label {
+                text: qsTr("Write the following metadata into the audio file?")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Title: ") + playerController.trackTitle
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Artist: ") + playerController.trackArtist
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: qsTr("Album: ") + playerController.trackAlbum
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+        }
+
+        onAccepted: playerController.writeMetadataToFile()
+    }
+
+    // Listen for metadataResults changes to auto-show selection dialog.
+    Connections {
+        target: playerController
+        function onMetadataResultsChanged() {
+            if (playerController.metadataResults.length > 1)
+                metadataSelectionDialog.open()
+        }
+        function onMetadataWritten(success) {
+            writeResultLabel.text = success
+                ? qsTr("Metadata saved successfully!")
+                : qsTr("Failed to save metadata.")
+            writeResultLabel.visible = true
+            writeResultTimer.restart()
+        }
+    }
+
+    // Timer to hide the write-result label after a few seconds
+    Timer {
+        id: writeResultTimer
+        interval: 3000
+        onTriggered: writeResultLabel.visible = false
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
@@ -84,6 +217,45 @@ Window {
                 elide: Text.ElideMiddle
                 font.pointSize: 10
                 color: "#555555"
+            }
+
+            // Metadata action buttons
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 8
+                visible: playerController.trackTitle !== ""
+
+                Button {
+                    text: qsTr("Choose Result...")
+                    font.pointSize: 9
+                    visible: playerController.metadataResults.length > 1
+                    onClicked: metadataSelectionDialog.open()
+                }
+
+                Button {
+                    text: qsTr("Save to File")
+                    font.pointSize: 9
+                    visible: playerController.metadataWriteSupported
+                    onClicked: writeMetadataDialog.open()
+                }
+            }
+
+            // Fingerprint availability indicator
+            Label {
+                Layout.alignment: Qt.AlignHCenter
+                visible: playerController.fingerprintAvailable && playerController.currentTrack !== ""
+                text: "🎵 " + qsTr("Audio fingerprint identification active")
+                font.pointSize: 8
+                color: "#4CAF50"
+            }
+
+            // Write result notification
+            Label {
+                id: writeResultLabel
+                Layout.alignment: Qt.AlignHCenter
+                visible: false
+                font.pointSize: 9
+                color: "#1976D2"
             }
         }
 

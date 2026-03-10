@@ -17,11 +17,16 @@ MetadataProvider::MetadataProvider(QObject *parent)
 
 QUrl MetadataProvider::buildSearchUrl(const QString &trackName)
 {
+    return buildSearchUrl(trackName, kDefaultLimit);
+}
+
+QUrl MetadataProvider::buildSearchUrl(const QString &trackName, int limit)
+{
     QUrl url(QStringLiteral("https://musicbrainz.org/ws/2/recording"));
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("query"), trackName);
     query.addQueryItem(QStringLiteral("fmt"), QStringLiteral("json"));
-    query.addQueryItem(QStringLiteral("limit"), QStringLiteral("1"));
+    query.addQueryItem(QStringLiteral("limit"), QString::number(limit));
     url.setQuery(query);
     return url;
 }
@@ -29,35 +34,77 @@ QUrl MetadataProvider::buildSearchUrl(const QString &trackName)
 bool MetadataProvider::parseResponse(const QByteArray &data, QString &artist,
                                      QString &album, QString &title)
 {
+    QList<MetadataResult> results = parseAllResults(data);
+    if (results.isEmpty())
+        return false;
+
+    const MetadataResult &first = results.first();
+    title = first.title;
+    artist = first.artist;
+    album = first.album;
+    return !title.isEmpty();
+}
+
+QList<MetadataResult> MetadataProvider::parseAllResults(const QByteArray &data)
+{
+    QList<MetadataResult> results;
+
     QJsonParseError err;
     QJsonDocument doc = QJsonDocument::fromJson(data, &err);
     if (err.error != QJsonParseError::NoError || !doc.isObject())
-        return false;
+        return results;
 
-    QJsonArray recordings = doc.object().value(QStringLiteral("recordings")).toArray();
-    if (recordings.isEmpty())
-        return false;
+    QJsonArray recordings =
+        doc.object().value(QStringLiteral("recordings")).toArray();
 
-    QJsonObject rec = recordings.first().toObject();
+    for (const QJsonValue &val : recordings) {
+        QJsonObject rec = val.toObject();
+        MetadataResult r;
 
-    // Title
-    title = rec.value(QStringLiteral("title")).toString();
+        r.title = rec.value(QStringLiteral("title")).toString();
+        r.score = rec.value(QStringLiteral("score")).toInt();
+        r.recordingId = rec.value(QStringLiteral("id")).toString();
 
-    // Artist (first artist-credit entry)
-    QJsonArray credits = rec.value(QStringLiteral("artist-credit")).toArray();
-    if (!credits.isEmpty()) {
-        QJsonObject artistObj =
-            credits.first().toObject().value(QStringLiteral("artist")).toObject();
-        artist = artistObj.value(QStringLiteral("name")).toString();
+        // Artist (first artist-credit entry)
+        QJsonArray credits =
+            rec.value(QStringLiteral("artist-credit")).toArray();
+        if (!credits.isEmpty()) {
+            QJsonObject artistObj = credits.first()
+                                       .toObject()
+                                       .value(QStringLiteral("artist"))
+                                       .toObject();
+            r.artist = artistObj.value(QStringLiteral("name")).toString();
+        }
+
+        // Album (first release entry)
+        QJsonArray releases = rec.value(QStringLiteral("releases")).toArray();
+        if (!releases.isEmpty()) {
+            r.album = releases.first()
+                          .toObject()
+                          .value(QStringLiteral("title"))
+                          .toString();
+        }
+
+        if (!r.title.isEmpty())
+            results.append(r);
     }
 
-    // Album (first release entry)
-    QJsonArray releases = rec.value(QStringLiteral("releases")).toArray();
-    if (!releases.isEmpty()) {
-        album = releases.first().toObject().value(QStringLiteral("title")).toString();
-    }
+    return results;
+}
 
-    return !title.isEmpty();
+QVariantList MetadataProvider::toVariantList(const QList<MetadataResult> &results)
+{
+    QVariantList list;
+    for (const auto &r : results) {
+        QVariantMap map;
+        map[QStringLiteral("title")] = r.title;
+        map[QStringLiteral("artist")] = r.artist;
+        map[QStringLiteral("album")] = r.album;
+        map[QStringLiteral("recordingId")] = r.recordingId;
+        map[QStringLiteral("score")] = r.score;
+        list.append(map);
+    }
+    return list;
 }
 
 void MetadataProvider::lookup(const QString &trackName)
@@ -84,15 +131,22 @@ void MetadataProvider::onReplyFinished(QNetworkReply *reply)
     }
 
     QByteArray data = reply->readAll();
-    QString artist, album, title;
-    if (parseResponse(data, artist, album, title)) {
-        m_artist = artist;
-        m_album = album;
-        m_title = title;
-        emit metadataReady(artist, album, title);
-    } else {
+    QList<MetadataResult> allResults = parseAllResults(data);
+
+    if (allResults.isEmpty()) {
         emit lookupFailed(QStringLiteral("No metadata found"));
+        return;
     }
+
+    // Always emit the multi-result signal so the UI can show a selection list.
+    emit multipleResultsReady(toVariantList(allResults));
+
+    // Also emit the legacy single-result signal with the best match.
+    const MetadataResult &best = allResults.first();
+    m_artist = best.artist;
+    m_album = best.album;
+    m_title = best.title;
+    emit metadataReady(best.artist, best.album, best.title);
 }
 
 QString MetadataProvider::artist() const { return m_artist; }

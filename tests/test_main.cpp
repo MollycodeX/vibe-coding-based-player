@@ -3,6 +3,9 @@
 #include "AudioDecoder.h"
 #include "MetadataProvider.h"
 #include "LyricsProvider.h"
+#include "AudioFingerprinter.h"
+#include "AcoustIdClient.h"
+#include "MetadataWriter.h"
 #include <QUrl>
 #include <QUrlQuery>
 #include <cassert>
@@ -181,8 +184,15 @@ static void testMetadataProviderBuildUrl() {
     assert(q.hasQueryItem("query"));
     assert(q.queryItemValue("query") == "Bohemian Rhapsody");
     assert(q.queryItemValue("fmt") == "json");
-    assert(q.queryItemValue("limit") == "1");
+    assert(q.queryItemValue("limit") == "10");
     std::cout << "  [PASS] MetadataProvider::buildSearchUrl\n";
+}
+
+static void testMetadataProviderBuildUrlWithLimit() {
+    QUrl url = MetadataProvider::buildSearchUrl("Test", 5);
+    QUrlQuery q(url);
+    assert(q.queryItemValue("limit") == "5");
+    std::cout << "  [PASS] MetadataProvider::buildSearchUrl (custom limit)\n";
 }
 
 static void testMetadataProviderParseResponse() {
@@ -261,6 +271,201 @@ static void testLyricsProviderParseEmpty() {
 }
 
 // ---------------------------------------------------------------------------
+// MetadataProvider multi-result tests
+// ---------------------------------------------------------------------------
+static void testMetadataProviderParseAllResults() {
+    QByteArray json = R"JSON({
+        "recordings": [
+            {
+                "id": "rec-1",
+                "title": "Bohemian Rhapsody",
+                "score": 100,
+                "artist-credit": [{"artist": {"name": "Queen"}}],
+                "releases": [{"title": "A Night at the Opera"}]
+            },
+            {
+                "id": "rec-2",
+                "title": "Bohemian Rhapsody Live",
+                "score": 85,
+                "artist-credit": [{"artist": {"name": "Queen"}}],
+                "releases": [{"title": "Live at Wembley"}]
+            }
+        ]
+    })JSON";
+
+    QList<MetadataResult> results = MetadataProvider::parseAllResults(json);
+    assert(results.size() == 2);
+    assert(results[0].title == "Bohemian Rhapsody");
+    assert(results[0].artist == "Queen");
+    assert(results[0].album == "A Night at the Opera");
+    assert(results[0].recordingId == "rec-1");
+    assert(results[0].score == 100);
+    assert(results[1].title == "Bohemian Rhapsody Live");
+    assert(results[1].album == "Live at Wembley");
+    assert(results[1].score == 85);
+    std::cout << "  [PASS] MetadataProvider::parseAllResults (multiple)\n";
+}
+
+static void testMetadataProviderToVariantList() {
+    QList<MetadataResult> results;
+    MetadataResult r;
+    r.title = "Test";
+    r.artist = "Artist";
+    r.album = "Album";
+    r.recordingId = "id-1";
+    r.score = 90;
+    results.append(r);
+
+    QVariantList vl = MetadataProvider::toVariantList(results);
+    assert(vl.size() == 1);
+    QVariantMap m = vl[0].toMap();
+    assert(m["title"].toString() == "Test");
+    assert(m["artist"].toString() == "Artist");
+    assert(m["album"].toString() == "Album");
+    assert(m["score"].toInt() == 90);
+    std::cout << "  [PASS] MetadataProvider::toVariantList\n";
+}
+
+// ---------------------------------------------------------------------------
+// AudioFingerprinter unit tests (parsing only – no fpcalc needed)
+// ---------------------------------------------------------------------------
+static void testFingerprintParseFpcalcOutput() {
+    QByteArray output = "DURATION=240\nFINGERPRINT=AQADtMkUaUkSRZg\n";
+    int duration = 0;
+    QString fingerprint;
+    assert(AudioFingerprinter::parseFpcalcOutput(output, duration, fingerprint));
+    assert(duration == 240);
+    assert(fingerprint == "AQADtMkUaUkSRZg");
+    std::cout << "  [PASS] AudioFingerprinter::parseFpcalcOutput (valid)\n";
+}
+
+static void testFingerprintParseFpcalcOutputInvalid() {
+    QByteArray output = "INVALID=DATA\n";
+    int duration = 0;
+    QString fingerprint;
+    assert(!AudioFingerprinter::parseFpcalcOutput(output, duration, fingerprint));
+    std::cout << "  [PASS] AudioFingerprinter::parseFpcalcOutput (invalid)\n";
+}
+
+static void testFingerprintParseFpcalcOutputEmpty() {
+    QByteArray output = "";
+    int duration = 0;
+    QString fingerprint;
+    assert(!AudioFingerprinter::parseFpcalcOutput(output, duration, fingerprint));
+    std::cout << "  [PASS] AudioFingerprinter::parseFpcalcOutput (empty)\n";
+}
+
+// ---------------------------------------------------------------------------
+// AcoustIdClient unit tests (URL building & JSON parsing – no network)
+// ---------------------------------------------------------------------------
+static void testAcoustIdBuildUrl() {
+    QUrl url = AcoustIdClient::buildLookupUrl(240, "AQADtMkUaUkSRZg", "testkey");
+    assert(url.host() == "api.acoustid.org");
+    assert(url.path() == "/v2/lookup");
+    QUrlQuery q(url);
+    assert(q.queryItemValue("client") == "testkey");
+    assert(q.queryItemValue("duration") == "240");
+    assert(q.queryItemValue("fingerprint") == "AQADtMkUaUkSRZg");
+    assert(q.hasQueryItem("meta"));
+    std::cout << "  [PASS] AcoustIdClient::buildLookupUrl\n";
+}
+
+static void testAcoustIdParseResponse() {
+    QByteArray json = R"({
+        "status": "ok",
+        "results": [{
+            "score": 0.95,
+            "recordings": [{
+                "id": "mbid-123",
+                "title": "Test Song",
+                "artists": [{"name": "Test Artist"}],
+                "releasegroups": [{"title": "Test Album"}]
+            }]
+        }]
+    })";
+
+    QList<AcoustIdResult> results = AcoustIdClient::parseResponse(json);
+    assert(results.size() == 1);
+    assert(results[0].title == "Test Song");
+    assert(results[0].artist == "Test Artist");
+    assert(results[0].album == "Test Album");
+    assert(results[0].recordingId == "mbid-123");
+    assert(results[0].score > 0.9);
+    std::cout << "  [PASS] AcoustIdClient::parseResponse (valid)\n";
+}
+
+static void testAcoustIdParseResponseEmpty() {
+    QByteArray json = R"({"status": "ok", "results": []})";
+    QList<AcoustIdResult> results = AcoustIdClient::parseResponse(json);
+    assert(results.isEmpty());
+
+    QByteArray badJson = "not json";
+    assert(AcoustIdClient::parseResponse(badJson).isEmpty());
+    std::cout << "  [PASS] AcoustIdClient::parseResponse (empty/invalid)\n";
+}
+
+static void testAcoustIdParseResponseMultiple() {
+    QByteArray json = R"({
+        "status": "ok",
+        "results": [{
+            "score": 0.95,
+            "recordings": [
+                {
+                    "id": "mbid-1",
+                    "title": "Song A",
+                    "artists": [{"name": "Artist A"}],
+                    "releasegroups": [{"title": "Album A"}]
+                },
+                {
+                    "id": "mbid-2",
+                    "title": "Song B",
+                    "artists": [{"name": "Artist B"}],
+                    "releasegroups": [{"title": "Album B"}]
+                }
+            ]
+        }]
+    })";
+
+    QList<AcoustIdResult> results = AcoustIdClient::parseResponse(json);
+    assert(results.size() == 2);
+    assert(results[0].title == "Song A");
+    assert(results[1].title == "Song B");
+    std::cout << "  [PASS] AcoustIdClient::parseResponse (multiple recordings)\n";
+}
+
+static void testAcoustIdToVariantList() {
+    QList<AcoustIdResult> results;
+    AcoustIdResult r;
+    r.recordingId = "id-1";
+    r.title = "T";
+    r.artist = "A";
+    r.album = "Al";
+    r.score = 0.8;
+    results.append(r);
+
+    QVariantList vl = AcoustIdClient::toVariantList(results);
+    assert(vl.size() == 1);
+    QVariantMap m = vl[0].toMap();
+    assert(m["title"].toString() == "T");
+    assert(m["artist"].toString() == "A");
+    assert(m["score"].toDouble() > 0.7);
+    std::cout << "  [PASS] AcoustIdClient::toVariantList\n";
+}
+
+// ---------------------------------------------------------------------------
+// MetadataWriter unit tests
+// ---------------------------------------------------------------------------
+static void testMetadataWriterIsSupported() {
+#ifdef MSCPLAYER_HAS_TAGLIB
+    assert(MetadataWriter::isSupported() == true);
+    std::cout << "  [PASS] MetadataWriter::isSupported (TagLib available)\n";
+#else
+    assert(MetadataWriter::isSupported() == false);
+    std::cout << "  [PASS] MetadataWriter::isSupported (TagLib not available)\n";
+#endif
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 int main() {
@@ -284,14 +489,32 @@ int main() {
 
     std::cout << "\nRunning MetadataProvider tests...\n";
     testMetadataProviderBuildUrl();
+    testMetadataProviderBuildUrlWithLimit();
     testMetadataProviderParseResponse();
     testMetadataProviderParseEmpty();
+    testMetadataProviderParseAllResults();
+    testMetadataProviderToVariantList();
 
     std::cout << "\nRunning LyricsProvider tests...\n";
     testLyricsProviderBuildUrl();
     testLyricsProviderBuildUrlNoArtist();
     testLyricsProviderParseResponse();
     testLyricsProviderParseEmpty();
+
+    std::cout << "\nRunning AudioFingerprinter tests...\n";
+    testFingerprintParseFpcalcOutput();
+    testFingerprintParseFpcalcOutputInvalid();
+    testFingerprintParseFpcalcOutputEmpty();
+
+    std::cout << "\nRunning AcoustIdClient tests...\n";
+    testAcoustIdBuildUrl();
+    testAcoustIdParseResponse();
+    testAcoustIdParseResponseEmpty();
+    testAcoustIdParseResponseMultiple();
+    testAcoustIdToVariantList();
+
+    std::cout << "\nRunning MetadataWriter tests...\n";
+    testMetadataWriterIsSupported();
 
     std::cout << "\nAll tests passed!\n";
     return 0;

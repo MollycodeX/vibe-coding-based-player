@@ -10,8 +10,11 @@
 - **语言**: C++17
 - **GUI框架**: Qt 6 (Qt Quick / QML)
 - **音频引擎**: [miniaudio](https://miniaud.io/) (嵌入式跨平台音频库)
+- **音频指纹**: [Chromaprint](https://acoustid.org/chromaprint) (fpcalc命令行工具)
+- **音频识别**: [AcoustID](https://acoustid.org/) 开源音频识别服务
 - **在线元数据**: [MusicBrainz](https://musicbrainz.org/) 开源音乐数据库 API
 - **在线歌词**: [LRCLIB](https://lrclib.net/) 开源歌词数据库 API
+- **元数据写入**: [TagLib](https://taglib.org/) 音频标签读写库 (可选)
 - **构建系统**: CMake (≥ 3.16)
 - **协议**: MIT License
 
@@ -27,8 +30,11 @@ MP3, WAV, FLAC, OGG, AAC, WMA, M4A, Opus
 - ✅ 基于Qt Quick (QML)的图形用户界面
 - ✅ 播放列表管理（添加文件/文件夹、移除、选择、上一曲/下一曲循环）
 - ✅ 多语言支持（英文/中文）
-- ✅ 联网查找歌曲元数据（通过MusicBrainz开源数据库获取艺术家、专辑、曲名）
+- ✅ 音频指纹识别（通过Chromaprint/fpcalc计算音频指纹，即使无元数据也能识别歌曲）
+- ✅ 联网查找歌曲元数据（通过AcoustID指纹匹配 + MusicBrainz开源数据库获取艺术家、专辑、曲名）
 - ✅ 联网查找歌词（通过LRCLIB开源数据库获取纯文本及同步歌词）
+- ✅ 多结果选择（当查找出现多个结果时，列出GUI对话框让用户手动选择正确的元数据）
+- ✅ 元数据写入（可让用户选择是否将识别到的元数据录入音频文件中，通过TagLib实现）
 - ✅ UI中显示歌曲元信息（曲名、艺术家、专辑）和可折叠歌词面板
 - ✅ Unicode路径支持（含CJK字符的文件路径）
 
@@ -39,12 +45,17 @@ MP3, WAV, FLAC, OGG, AAC, WMA, M4A, Opus
 - Qt 6 (Core, Gui, Qml, Quick, QuickDialogs2, Network)
 - ALSA 开发库 (Linux)
 - CMake ≥ 3.16
+- [可选] Chromaprint 工具 (`fpcalc`) — 用于音频指纹识别
+- [可选] TagLib (`libtag1-dev`) — 用于将元数据写入音频文件
 
 ### 构建 (Linux)
 
 ```bash
 # 安装依赖
 sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libasound2-dev
+
+# 可选：安装音频指纹和元数据写入支持
+sudo apt-get install -y libchromaprint-tools libtag1-dev
 
 # 构建
 mkdir build && cd build
@@ -64,16 +75,19 @@ ctest --output-on-failure
 ```
 MSCPLAYER/
 ├── include/           # C++头文件
-│   ├── AudioPlayer.h      # miniaudio音频播放器（PIMPL模式）
-│   ├── Playlist.h         # 播放列表管理
-│   ├── PlayerController.h # QML↔C++桥接控制器
-│   ├── MetadataProvider.h # MusicBrainz元数据查找
-│   ├── LyricsProvider.h   # LRCLIB歌词查找
-│   ├── I18n.h             # 编译时多语言字符串表
+│   ├── AudioPlayer.h         # miniaudio音频播放器（PIMPL模式）
+│   ├── Playlist.h            # 播放列表管理
+│   ├── PlayerController.h    # QML↔C++桥接控制器
+│   ├── AudioFingerprinter.h  # Chromaprint音频指纹计算
+│   ├── AcoustIdClient.h      # AcoustID音频识别API客户端
+│   ├── MetadataProvider.h    # MusicBrainz元数据查找（多结果支持）
+│   ├── LyricsProvider.h      # LRCLIB歌词查找
+│   ├── MetadataWriter.h      # TagLib元数据写入
+│   ├── I18n.h                # 编译时多语言字符串表
 │   └── ...
 ├── src/               # C++源代码及QML界面
 │   ├── main.cpp           # Qt应用入口
-│   ├── main.qml           # Qt Quick用户界面
+│   ├── main.qml           # Qt Quick用户界面（含元数据选择和写入确认对话框）
 │   └── ...
 ├── tests/             # 单元测试
 ├── i18n/              # 翻译文件 (.ts/.qm)
@@ -92,6 +106,5 @@ MSCPLAYER/
    - 已实现基本的音频读取和操作，已加上基于Qt Quick (QML)的GUI（含播放列表管理）和多语言支持（英文/中文）,识别音频文件的音频指纹即使没有任何元数据也可联网查找歌曲元数据及歌词（当查找出现多个结果时列出gui让用户手动选择正确的元数据），且可让用户选择是否将识别到的元数据录入音频文件中
 5. ### 计划中的新功能
    - 支持更多平台（macOS，Linux和iOS）
-   - 支持联网查找音频文件的元数据及其歌词
    - 添加类似索尼DSEE的音频上采样技术和类似索尼360 upmix的音频升格技术
    - 根据所播放音乐的风格智能定制其风格化音频可视化界面
