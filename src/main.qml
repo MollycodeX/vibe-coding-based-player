@@ -196,6 +196,7 @@ Window {
                     flat: true
                     font.pointSize: 9
                     implicitWidth: 32
+                    Accessible.name: lyricsPane.visible ? qsTr("Collapse lyrics") : qsTr("Expand lyrics")
                     onClicked: lyricsPane.visible = !lyricsPane.visible
                 }
             }

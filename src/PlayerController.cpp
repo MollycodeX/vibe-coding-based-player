@@ -190,13 +190,7 @@ void PlayerController::removeTrack(int index)
             m_player.loadTrack(m_playlist.currentTrack());
             lookupTrackInfo();
         } else {
-            // Clear metadata and lyrics when playlist becomes empty.
-            m_trackTitle.clear();
-            m_trackArtist.clear();
-            m_trackAlbum.clear();
-            m_lyrics.clear();
-            emit metadataChanged();
-            emit lyricsChanged();
+            clearMetadata();
         }
         emit currentTrackChanged();
         emit playingChanged();
@@ -234,16 +228,20 @@ void PlayerController::lookupTrackInfo()
     if (path.isEmpty())
         return;
 
-    // Reset current metadata / lyrics while looking up.
+    clearMetadata();
+
+    QString name = trackNameFromPath(path);
+    m_metadataProvider.lookup(name);
+}
+
+void PlayerController::clearMetadata()
+{
     m_trackTitle.clear();
     m_trackArtist.clear();
     m_trackAlbum.clear();
     m_lyrics.clear();
     emit metadataChanged();
     emit lyricsChanged();
-
-    QString name = trackNameFromPath(path);
-    m_metadataProvider.lookup(name);
 }
 
 void PlayerController::onMetadataReady(const QString &artist, const QString &album,

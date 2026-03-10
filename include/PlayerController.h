@@ -84,6 +84,7 @@ private slots:
 
 private:
     void lookupTrackInfo();
+    void clearMetadata();
 
     AudioPlayer      m_player;
     Playlist         m_playlist;
