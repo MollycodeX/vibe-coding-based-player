@@ -1,0 +1,35 @@
+---
+# clang-tidy configuration for MSCPLAYER
+# C++17 / Qt6 / miniaudio project
+
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-slicing,
+  misc-unused-using-decls,
+  modernize-use-auto,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-using,
+  performance-for-range-copy,
+  performance-unnecessary-copy-initialization,
+  readability-braces-around-statements,
+  readability-const-return-type,
+  readability-redundant-string-init,
+  readability-simplify-boolean-expr
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: 'include/.*\.h$'
+
+CheckOptions:
+  - key: modernize-use-auto.MinTypeNameLength
+    value: '5'
+
+# Exclude third-party headers (miniaudio)
+ExtraArgs:
+  - '--system-header-prefix=miniaudio.h'
+...

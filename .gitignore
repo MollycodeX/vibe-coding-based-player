@@ -1,6 +1,8 @@
 /build/
+/build-*/
 /CMakeFiles/
 CMakeCache.txt
+CMakeUserPresets.json
 *.o
 *.obj
 *.exe
