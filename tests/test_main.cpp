@@ -6,6 +6,7 @@
 #include "AudioFingerprinter.h"
 #include "AcoustIdClient.h"
 #include "MetadataWriter.h"
+#include "CoverArtProvider.h"
 #include <QUrl>
 #include <QUrlQuery>
 #include <cassert>
@@ -466,6 +467,100 @@ static void testMetadataWriterIsSupported() {
 }
 
 // ---------------------------------------------------------------------------
+// CoverArtProvider unit tests (URL building – no network)
+// ---------------------------------------------------------------------------
+static void testCoverArtBuildReleaseUrl() {
+    QUrl url = CoverArtProvider::buildReleaseUrl("12345678-abcd-efgh-ijkl-000000000000");
+    assert(url.host() == "coverartarchive.org");
+    assert(url.path() == "/release/12345678-abcd-efgh-ijkl-000000000000/front-250");
+    std::cout << "  [PASS] CoverArtProvider::buildReleaseUrl\n";
+}
+
+static void testCoverArtBuildReleaseGroupUrl() {
+    QUrl url = CoverArtProvider::buildReleaseGroupUrl("abcd1234-0000-0000-0000-000000000000");
+    assert(url.host() == "coverartarchive.org");
+    assert(url.path() == "/release-group/abcd1234-0000-0000-0000-000000000000/front-250");
+    std::cout << "  [PASS] CoverArtProvider::buildReleaseGroupUrl\n";
+}
+
+// ---------------------------------------------------------------------------
+// MetadataProvider releaseId extraction test
+// ---------------------------------------------------------------------------
+static void testMetadataProviderParseReleaseId() {
+    QByteArray json = R"JSON({
+        "recordings": [{
+            "id": "rec-1",
+            "title": "Test Song",
+            "score": 95,
+            "artist-credit": [{"artist": {"name": "Test Artist"}}],
+            "releases": [{"id": "release-mbid-123", "title": "Test Album"}]
+        }]
+    })JSON";
+
+    QList<MetadataResult> results = MetadataProvider::parseAllResults(json);
+    assert(results.size() == 1);
+    assert(results[0].releaseId == "release-mbid-123");
+    std::cout << "  [PASS] MetadataProvider releaseId extraction\n";
+}
+
+static void testMetadataProviderVariantListIncludesReleaseId() {
+    QList<MetadataResult> results;
+    MetadataResult r;
+    r.title = "T";
+    r.artist = "A";
+    r.album = "Al";
+    r.recordingId = "rec-1";
+    r.releaseId = "rel-1";
+    r.score = 80;
+    results.append(r);
+
+    QVariantList vl = MetadataProvider::toVariantList(results);
+    QVariantMap m = vl[0].toMap();
+    assert(m["releaseId"].toString() == "rel-1");
+    std::cout << "  [PASS] MetadataProvider::toVariantList includes releaseId\n";
+}
+
+// ---------------------------------------------------------------------------
+// AcoustIdClient releaseGroupId extraction test
+// ---------------------------------------------------------------------------
+static void testAcoustIdParseReleaseGroupId() {
+    QByteArray json = R"({
+        "status": "ok",
+        "results": [{
+            "score": 0.95,
+            "recordings": [{
+                "id": "mbid-123",
+                "title": "Test Song",
+                "artists": [{"name": "Test Artist"}],
+                "releasegroups": [{"id": "rg-mbid-456", "title": "Test Album"}]
+            }]
+        }]
+    })";
+
+    QList<AcoustIdResult> results = AcoustIdClient::parseResponse(json);
+    assert(results.size() == 1);
+    assert(results[0].releaseGroupId == "rg-mbid-456");
+    std::cout << "  [PASS] AcoustIdClient releaseGroupId extraction\n";
+}
+
+static void testAcoustIdVariantListIncludesReleaseGroupId() {
+    QList<AcoustIdResult> results;
+    AcoustIdResult r;
+    r.recordingId = "id-1";
+    r.title = "T";
+    r.artist = "A";
+    r.album = "Al";
+    r.releaseGroupId = "rg-1";
+    r.score = 0.8;
+    results.append(r);
+
+    QVariantList vl = AcoustIdClient::toVariantList(results);
+    QVariantMap m = vl[0].toMap();
+    assert(m["releaseGroupId"].toString() == "rg-1");
+    std::cout << "  [PASS] AcoustIdClient::toVariantList includes releaseGroupId\n";
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 int main() {
@@ -515,6 +610,16 @@ int main() {
 
     std::cout << "\nRunning MetadataWriter tests...\n";
     testMetadataWriterIsSupported();
+
+    std::cout << "\nRunning CoverArtProvider tests...\n";
+    testCoverArtBuildReleaseUrl();
+    testCoverArtBuildReleaseGroupUrl();
+
+    std::cout << "\nRunning releaseId / releaseGroupId extraction tests...\n";
+    testMetadataProviderParseReleaseId();
+    testMetadataProviderVariantListIncludesReleaseId();
+    testAcoustIdParseReleaseGroupId();
+    testAcoustIdVariantListIncludesReleaseGroupId();
 
     std::cout << "\nAll tests passed!\n";
     return 0;

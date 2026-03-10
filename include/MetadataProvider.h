@@ -18,7 +18,8 @@ struct MetadataResult {
     QString artist;
     QString album;
     QString recordingId;
-    int score{0}; // MusicBrainz relevance score (0-100)
+    QString releaseId; // MusicBrainz release MBID (used for cover art)
+    int score{0};      // MusicBrainz relevance score (0-100)
 };
 
 class MetadataProvider : public QObject {

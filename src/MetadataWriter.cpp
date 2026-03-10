@@ -7,6 +7,11 @@
 #include <fileref.h>
 #include <tag.h>
 #include <tpropertymap.h>
+#include <mpegfile.h>
+#include <id3v2tag.h>
+#include <attachedpictureframe.h>
+#include <flacfile.h>
+#include <flacpicture.h>
 #endif
 
 MetadataWriter::MetadataWriter(QObject *parent)
@@ -24,7 +29,8 @@ bool MetadataWriter::isSupported()
 }
 
 bool MetadataWriter::write(const QString &filePath, const QString &title,
-                           const QString &artist, const QString &album)
+                           const QString &artist, const QString &album,
+                           const QByteArray &coverArt)
 {
 #ifdef MSCPLAYER_HAS_TAGLIB
     // TagLib::FileRef can open most common audio formats automatically.
@@ -49,6 +55,33 @@ bool MetadataWriter::write(const QString &filePath, const QString &title,
         tag->setAlbum(
             TagLib::String(album.toUtf8().constData(), TagLib::String::UTF8));
 
+    // Embed cover art if provided, using format-specific APIs.
+    if (!coverArt.isEmpty()) {
+        TagLib::ByteVector imageData(coverArt.constData(), coverArt.size());
+
+        if (auto *mpegFile = dynamic_cast<TagLib::MPEG::File *>(f.file())) {
+            auto *id3v2 = mpegFile->ID3v2Tag(true);
+            if (id3v2) {
+                // Remove existing cover art frames.
+                id3v2->removeFrames("APIC");
+                auto *picFrame = new TagLib::ID3v2::AttachedPictureFrame();
+                picFrame->setMimeType("image/jpeg");
+                picFrame->setPicture(imageData);
+                picFrame->setType(
+                    TagLib::ID3v2::AttachedPictureFrame::FrontCover);
+                id3v2->addFrame(picFrame);
+            }
+        } else if (auto *flacFile =
+                       dynamic_cast<TagLib::FLAC::File *>(f.file())) {
+            flacFile->removePictures();
+            auto *pic = new TagLib::FLAC::Picture();
+            pic->setMimeType("image/jpeg");
+            pic->setData(imageData);
+            pic->setType(TagLib::FLAC::Picture::FrontCover);
+            flacFile->addPicture(pic);
+        }
+    }
+
     if (!f.save()) {
         emit writeFailed(filePath, QStringLiteral("Failed to save tags"));
         return false;
@@ -61,6 +94,7 @@ bool MetadataWriter::write(const QString &filePath, const QString &title,
     Q_UNUSED(title)
     Q_UNUSED(artist)
     Q_UNUSED(album)
+    Q_UNUSED(coverArt)
     emit writeFailed(filePath,
                      QStringLiteral("TagLib not available in this build"));
     return false;

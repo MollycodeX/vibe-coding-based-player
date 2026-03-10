@@ -44,11 +44,13 @@ add_library(vibe_player_lib STATIC
     AudioFingerprinter.cpp
     AcoustIdClient.cpp
     MetadataWriter.cpp
+    CoverArtProvider.cpp
     ${PROJECT_SOURCE_DIR}/include/MetadataProvider.h
     ${PROJECT_SOURCE_DIR}/include/LyricsProvider.h
     ${PROJECT_SOURCE_DIR}/include/AudioFingerprinter.h
     ${PROJECT_SOURCE_DIR}/include/AcoustIdClient.h
     ${PROJECT_SOURCE_DIR}/include/MetadataWriter.h
+    ${PROJECT_SOURCE_DIR}/include/CoverArtProvider.h
 )
 target_include_directories(vibe_player_lib PUBLIC
     ${PROJECT_SOURCE_DIR}/include
