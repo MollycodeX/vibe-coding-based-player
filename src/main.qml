@@ -80,8 +80,8 @@ Window {
         title: qsTr("Select Metadata")
         modal: true
         anchors.centerIn: parent
-        width: Math.min(root.width - 40, 420)
-        height: Math.min(root.height - 80, 400)
+        width: Math.min(root.width - 40, 480)
+        height: Math.min(root.height - 60, 520)
         standardButtons: Dialog.Cancel
 
         ColumnLayout {
@@ -103,28 +103,56 @@ Window {
 
                 delegate: Rectangle {
                     width: resultsList.width
-                    height: 56
+                    height: 64
                     color: resultMouseArea.containsMouse ? theme.metadataHoverRow : (index % 2 === 0 ? theme.metadataEvenRow : theme.surfaceBg)
                     radius: 4
 
-                    ColumnLayout {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 2
+                        anchors.margins: 6
+                        spacing: 8
 
-                        Label {
-                            text: modelData.title || qsTr("(unknown title)")
-                            font.bold: true
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
+                        // Album cover art thumbnail
+                        Image {
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            source: modelData.coverArtUrl || ""
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            // Placeholder when no cover art or loading failed
+                            Rectangle {
+                                anchors.fill: parent
+                                visible: parent.status !== Image.Ready
+                                color: theme.surfaceBg
+                                border.color: theme.border
+                                border.width: 1
+                                radius: 4
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "🎵"
+                                    font.pointSize: 16
+                                }
+                            }
                         }
-                        Label {
-                            text: (modelData.artist || qsTr("Unknown Artist"))
-                                  + (modelData.album ? " — " + modelData.album : "")
-                            font.pointSize: 9
-                            color: theme.mutedText
-                            elide: Text.ElideRight
+
+                        ColumnLayout {
                             Layout.fillWidth: true
+                            spacing: 2
+
+                            Label {
+                                text: modelData.title || qsTr("(unknown title)")
+                                font.bold: true
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: (modelData.artist || qsTr("Unknown Artist"))
+                                      + (modelData.album ? " — " + modelData.album : "")
+                                font.pointSize: 9
+                                color: theme.mutedText
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
                         }
                     }
 

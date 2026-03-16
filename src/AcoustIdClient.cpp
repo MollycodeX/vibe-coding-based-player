@@ -108,6 +108,12 @@ QVariantList AcoustIdClient::toVariantList(const QList<AcoustIdResult> &results)
         map[QStringLiteral("album")] = r.album;
         map[QStringLiteral("releaseGroupId")] = r.releaseGroupId;
         map[QStringLiteral("score")] = r.score;
+        if (!r.releaseGroupId.isEmpty()) {
+            map[QStringLiteral("coverArtUrl")] =
+                QStringLiteral(
+                    "https://coverartarchive.org/release-group/%1/front-250")
+                    .arg(r.releaseGroupId);
+        }
         list.append(map);
     }
     return list;

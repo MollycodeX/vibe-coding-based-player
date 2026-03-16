@@ -59,13 +59,16 @@ QList<MetadataResult> MetadataProvider::parseAllResults(const QByteArray &data)
 
     for (const QJsonValue &val : recordings) {
         QJsonObject rec = val.toObject();
-        MetadataResult r;
 
-        r.title = rec.value(QStringLiteral("title")).toString();
-        r.score = rec.value(QStringLiteral("score")).toInt();
-        r.recordingId = rec.value(QStringLiteral("id")).toString();
+        QString title = rec.value(QStringLiteral("title")).toString();
+        if (title.isEmpty())
+            continue;
+
+        int score = rec.value(QStringLiteral("score")).toInt();
+        QString recordingId = rec.value(QStringLiteral("id")).toString();
 
         // Artist (first artist-credit entry)
+        QString artist;
         QJsonArray credits =
             rec.value(QStringLiteral("artist-credit")).toArray();
         if (!credits.isEmpty()) {
@@ -73,19 +76,37 @@ QList<MetadataResult> MetadataProvider::parseAllResults(const QByteArray &data)
                                        .toObject()
                                        .value(QStringLiteral("artist"))
                                        .toObject();
-            r.artist = artistObj.value(QStringLiteral("name")).toString();
+            artist = artistObj.value(QStringLiteral("name")).toString();
         }
 
-        // Album (first release entry)
+        // Expand each release into a separate result so users can pick
+        // the correct album.  Cap per-recording releases to avoid explosion.
         QJsonArray releases = rec.value(QStringLiteral("releases")).toArray();
-        if (!releases.isEmpty()) {
-            QJsonObject releaseObj = releases.first().toObject();
-            r.album = releaseObj.value(QStringLiteral("title")).toString();
-            r.releaseId = releaseObj.value(QStringLiteral("id")).toString();
-        }
-
-        if (!r.title.isEmpty())
+        if (releases.isEmpty()) {
+            // No release info – still include the recording.
+            MetadataResult r;
+            r.title = title;
+            r.score = score;
+            r.recordingId = recordingId;
+            r.artist = artist;
             results.append(r);
+        } else {
+            static constexpr int kMaxReleasesPerRecording = 5;
+            int count = std::min(static_cast<int>(releases.size()),
+                                 kMaxReleasesPerRecording);
+            for (int i = 0; i < count; ++i) {
+                QJsonObject releaseObj = releases[i].toObject();
+                MetadataResult r;
+                r.title = title;
+                r.score = score;
+                r.recordingId = recordingId;
+                r.artist = artist;
+                r.album = releaseObj.value(QStringLiteral("title")).toString();
+                r.releaseId =
+                    releaseObj.value(QStringLiteral("id")).toString();
+                results.append(r);
+            }
+        }
     }
 
     return results;
@@ -102,6 +123,11 @@ QVariantList MetadataProvider::toVariantList(const QList<MetadataResult> &result
         map[QStringLiteral("recordingId")] = r.recordingId;
         map[QStringLiteral("releaseId")] = r.releaseId;
         map[QStringLiteral("score")] = r.score;
+        if (!r.releaseId.isEmpty()) {
+            map[QStringLiteral("coverArtUrl")] =
+                QStringLiteral("https://coverartarchive.org/release/%1/front-250")
+                    .arg(r.releaseId);
+        }
         list.append(map);
     }
     return list;
