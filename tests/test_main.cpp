@@ -282,14 +282,14 @@ static void testMetadataProviderParseAllResults() {
                 "title": "Bohemian Rhapsody",
                 "score": 100,
                 "artist-credit": [{"artist": {"name": "Queen"}}],
-                "releases": [{"title": "A Night at the Opera"}, {"title": "Greatest Hits"}]
+                "releases": [{"id": "rel-a", "title": "A Night at the Opera"}, {"id": "rel-b", "title": "Greatest Hits"}]
             },
             {
                 "id": "rec-2",
                 "title": "Bohemian Rhapsody Live",
                 "score": 85,
                 "artist-credit": [{"artist": {"name": "Queen"}}],
-                "releases": [{"title": "Live at Wembley"}]
+                "releases": [{"id": "rel-c", "title": "Live at Wembley"}]
             }
         ]
     })JSON";
@@ -301,12 +301,15 @@ static void testMetadataProviderParseAllResults() {
     assert(results[0].artist == "Queen");
     assert(results[0].album == "A Night at the Opera");
     assert(results[0].recordingId == "rec-1");
+    assert(results[0].releaseId == "rel-a");
     assert(results[0].score == 100);
     assert(results[1].title == "Bohemian Rhapsody");
     assert(results[1].album == "Greatest Hits");
     assert(results[1].recordingId == "rec-1");
+    assert(results[1].releaseId == "rel-b");
     assert(results[2].title == "Bohemian Rhapsody Live");
     assert(results[2].album == "Live at Wembley");
+    assert(results[2].releaseId == "rel-c");
     assert(results[2].score == 85);
     std::cout << "  [PASS] MetadataProvider::parseAllResults (multiple releases expanded)\n";
 }

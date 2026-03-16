@@ -116,7 +116,7 @@ Window {
                         Image {
                             Layout.preferredWidth: 48
                             Layout.preferredHeight: 48
-                            source: modelData.coverArtUrl || ""
+                            source: modelData.coverArtUrl
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true
                             // Placeholder when no cover art or loading failed
