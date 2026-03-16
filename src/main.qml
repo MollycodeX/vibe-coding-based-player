@@ -17,7 +17,7 @@ Window {
     // Theme toggle: false = light, true = dark
     property bool darkTheme: false
 
-    // Centralised theme palette
+    // Centralized theme palette
     QtObject {
         id: theme
         readonly property color background:        root.darkTheme ? "#1e1e1e" : "#ffffff"
@@ -267,6 +267,7 @@ Window {
                 text: root.darkTheme ? qsTr("☀ Light") : qsTr("🌙 Dark")
                 flat: true
                 font.pointSize: 9
+                Accessible.name: root.darkTheme ? qsTr("Switch to light theme") : qsTr("Switch to dark theme")
                 onClicked: root.darkTheme = !root.darkTheme
             }
         }
