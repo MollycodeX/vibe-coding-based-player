@@ -12,6 +12,29 @@ Window {
     minimumHeight: 520
     visible: true
     title: qsTr("Vibe Player")
+    color: theme.background
+
+    // Theme toggle: false = light, true = dark
+    property bool darkTheme: false
+
+    // Centralized theme palette
+    QtObject {
+        id: theme
+        readonly property color background:        root.darkTheme ? "#1e1e1e" : "#ffffff"
+        readonly property color text:              root.darkTheme ? "#e0e0e0" : "#000000"
+        readonly property color secondaryText:     root.darkTheme ? "#aaaaaa" : "#555555"
+        readonly property color mutedText:         root.darkTheme ? "#888888" : "#666666"
+        readonly property color placeholderText:   root.darkTheme ? "#666666" : "#999999"
+        readonly property color accent:            root.darkTheme ? "#5599ff" : "#3366cc"
+        readonly property color accentBg:          root.darkTheme ? "#2a3a5c" : "#e0e8ff"
+        readonly property color hoverBg:           root.darkTheme ? "#2c2c2c" : "#f0f0f0"
+        readonly property color surfaceBg:         root.darkTheme ? "#2a2a2a" : "#f8f8f8"
+        readonly property color border:            root.darkTheme ? "#444444" : "#cccccc"
+        readonly property color success:           root.darkTheme ? "#66bb6a" : "#4CAF50"
+        readonly property color info:              root.darkTheme ? "#42a5f5" : "#1976D2"
+        readonly property color metadataEvenRow:   root.darkTheme ? "#252525" : "#ffffff"
+        readonly property color metadataHoverRow:  root.darkTheme ? "#33404d" : "#e8f0fe"
+    }
 
     // Helper to format seconds as m:ss
     function formatTime(secs) {
@@ -57,8 +80,8 @@ Window {
         title: qsTr("Select Metadata")
         modal: true
         anchors.centerIn: parent
-        width: Math.min(root.width - 40, 420)
-        height: Math.min(root.height - 80, 400)
+        width: Math.min(root.width - 40, 480)
+        height: Math.min(root.height - 60, 520)
         standardButtons: Dialog.Cancel
 
         ColumnLayout {
@@ -80,28 +103,56 @@ Window {
 
                 delegate: Rectangle {
                     width: resultsList.width
-                    height: 56
-                    color: resultMouseArea.containsMouse ? "#e8f0fe" : (index % 2 === 0 ? "#ffffff" : "#f8f8f8")
+                    height: 64
+                    color: resultMouseArea.containsMouse ? theme.metadataHoverRow : (index % 2 === 0 ? theme.metadataEvenRow : theme.surfaceBg)
                     radius: 4
 
-                    ColumnLayout {
+                    RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 2
+                        anchors.margins: 6
+                        spacing: 8
 
-                        Label {
-                            text: modelData.title || qsTr("(unknown title)")
-                            font.bold: true
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
+                        // Album cover art thumbnail
+                        Image {
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            source: modelData.coverArtUrl
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            // Placeholder when no cover art or loading failed
+                            Rectangle {
+                                anchors.fill: parent
+                                visible: parent.status !== Image.Ready
+                                color: theme.surfaceBg
+                                border.color: theme.border
+                                border.width: 1
+                                radius: 4
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "🎵"
+                                    font.pointSize: 16
+                                }
+                            }
                         }
-                        Label {
-                            text: (modelData.artist || qsTr("Unknown Artist"))
-                                  + (modelData.album ? " — " + modelData.album : "")
-                            font.pointSize: 9
-                            color: "#666666"
-                            elide: Text.ElideRight
+
+                        ColumnLayout {
                             Layout.fillWidth: true
+                            spacing: 2
+
+                            Label {
+                                text: modelData.title || qsTr("(unknown title)")
+                                font.bold: true
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: (modelData.artist || qsTr("Unknown Artist"))
+                                      + (modelData.album ? " — " + modelData.album : "")
+                                font.pointSize: 9
+                                color: theme.mutedText
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
                         }
                     }
 
@@ -203,7 +254,7 @@ Window {
                 text: qsTr("To enable this feature, install TagLib (e.g. libtag1-dev on Ubuntu) and rebuild the application.")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
-                color: "#666666"
+                color: theme.mutedText
             }
         }
     }
@@ -236,6 +287,19 @@ Window {
         anchors.margins: 16
         spacing: 12
 
+        // Theme toggle
+        RowLayout {
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true }
+            Button {
+                text: root.darkTheme ? qsTr("☀ Light") : qsTr("🌙 Dark")
+                flat: true
+                font.pointSize: 9
+                Accessible.name: root.darkTheme ? qsTr("Switch to light theme") : qsTr("Switch to dark theme")
+                onClicked: root.darkTheme = !root.darkTheme
+            }
+        }
+
         // Current track display with metadata
         ColumnLayout {
             Layout.fillWidth: true
@@ -255,7 +319,7 @@ Window {
                 Rectangle {
                     anchors.fill: parent
                     color: "transparent"
-                    border.color: "#cccccc"
+                    border.color: theme.border
                     border.width: 1
                     radius: 4
                 }
@@ -274,6 +338,7 @@ Window {
                 elide: Text.ElideMiddle
                 font.pointSize: 12
                 font.bold: true
+                color: theme.text
             }
 
             Text {
@@ -285,7 +350,7 @@ Window {
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideMiddle
                 font.pointSize: 10
-                color: "#555555"
+                color: theme.secondaryText
             }
 
             // Metadata action buttons
@@ -319,7 +384,7 @@ Window {
                 visible: playerController.fingerprintAvailable && playerController.currentTrack !== ""
                 text: "🎵 " + qsTr("Audio fingerprint identification active")
                 font.pointSize: 8
-                color: "#4CAF50"
+                color: theme.success
             }
 
             // Write result notification
@@ -328,7 +393,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 visible: false
                 font.pointSize: 9
-                color: "#1976D2"
+                color: theme.info
             }
         }
 
@@ -352,13 +417,13 @@ Window {
                 Label {
                     text: formatTime(playerController.position)
                     font.pointSize: 9
-                    color: "#666666"
+                    color: theme.mutedText
                 }
                 Item { Layout.fillWidth: true }
                 Label {
                     text: formatTime(playerController.duration)
                     font.pointSize: 9
-                    color: "#666666"
+                    color: theme.mutedText
                 }
             }
         }
@@ -458,9 +523,9 @@ Window {
                     wrapMode: TextEdit.Wrap
                     text: playerController.lyrics
                     font.pointSize: 10
-                    color: "#333333"
+                    color: theme.text
                     background: Rectangle {
-                        color: "#f8f8f8"
+                        color: theme.surfaceBg
                         radius: 4
                     }
                 }
@@ -469,7 +534,7 @@ Window {
             Label {
                 visible: playerController.lyrics === "" && playerController.currentTrack !== ""
                 text: qsTr("(no lyrics available)")
-                color: "#999999"
+                color: theme.placeholderText
                 font.pointSize: 9
             }
         }
@@ -491,7 +556,7 @@ Window {
             delegate: Rectangle {
                 width: playlistView.width
                 height: 36
-                color: index === playerController.currentIndex ? "#e0e8ff" : (mouseArea.containsMouse ? "#f0f0f0" : "transparent")
+                color: index === playerController.currentIndex ? theme.accentBg : (mouseArea.containsMouse ? theme.hoverBg : "transparent")
                 radius: 4
 
                 RowLayout {
@@ -503,7 +568,7 @@ Window {
                     Label {
                         text: (index + 1) + "."
                         Layout.preferredWidth: 30
-                        color: index === playerController.currentIndex ? "#3366cc" : "#666666"
+                        color: index === playerController.currentIndex ? theme.accent : theme.mutedText
                     }
                     Label {
                         text: modelData
@@ -535,7 +600,7 @@ Window {
                 anchors.centerIn: parent
                 visible: playerController.trackCount === 0
                 text: qsTr("(playlist is empty)")
-                color: "#999999"
+                color: theme.placeholderText
             }
         }
     }

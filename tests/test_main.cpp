@@ -185,7 +185,7 @@ static void testMetadataProviderBuildUrl() {
     assert(q.hasQueryItem("query"));
     assert(q.queryItemValue("query") == "Bohemian Rhapsody");
     assert(q.queryItemValue("fmt") == "json");
-    assert(q.queryItemValue("limit") == "10");
+    assert(q.queryItemValue("limit") == "20");
     std::cout << "  [PASS] MetadataProvider::buildSearchUrl\n";
 }
 
@@ -282,29 +282,36 @@ static void testMetadataProviderParseAllResults() {
                 "title": "Bohemian Rhapsody",
                 "score": 100,
                 "artist-credit": [{"artist": {"name": "Queen"}}],
-                "releases": [{"title": "A Night at the Opera"}]
+                "releases": [{"id": "rel-a", "title": "A Night at the Opera"}, {"id": "rel-b", "title": "Greatest Hits"}]
             },
             {
                 "id": "rec-2",
                 "title": "Bohemian Rhapsody Live",
                 "score": 85,
                 "artist-credit": [{"artist": {"name": "Queen"}}],
-                "releases": [{"title": "Live at Wembley"}]
+                "releases": [{"id": "rel-c", "title": "Live at Wembley"}]
             }
         ]
     })JSON";
 
     QList<MetadataResult> results = MetadataProvider::parseAllResults(json);
-    assert(results.size() == 2);
+    // rec-1 has 2 releases, rec-2 has 1 → 3 results total
+    assert(results.size() == 3);
     assert(results[0].title == "Bohemian Rhapsody");
     assert(results[0].artist == "Queen");
     assert(results[0].album == "A Night at the Opera");
     assert(results[0].recordingId == "rec-1");
+    assert(results[0].releaseId == "rel-a");
     assert(results[0].score == 100);
-    assert(results[1].title == "Bohemian Rhapsody Live");
-    assert(results[1].album == "Live at Wembley");
-    assert(results[1].score == 85);
-    std::cout << "  [PASS] MetadataProvider::parseAllResults (multiple)\n";
+    assert(results[1].title == "Bohemian Rhapsody");
+    assert(results[1].album == "Greatest Hits");
+    assert(results[1].recordingId == "rec-1");
+    assert(results[1].releaseId == "rel-b");
+    assert(results[2].title == "Bohemian Rhapsody Live");
+    assert(results[2].album == "Live at Wembley");
+    assert(results[2].releaseId == "rel-c");
+    assert(results[2].score == 85);
+    std::cout << "  [PASS] MetadataProvider::parseAllResults (multiple releases expanded)\n";
 }
 
 static void testMetadataProviderToVariantList() {
@@ -517,7 +524,26 @@ static void testMetadataProviderVariantListIncludesReleaseId() {
     QVariantList vl = MetadataProvider::toVariantList(results);
     QVariantMap m = vl[0].toMap();
     assert(m["releaseId"].toString() == "rel-1");
-    std::cout << "  [PASS] MetadataProvider::toVariantList includes releaseId\n";
+    assert(m.contains("coverArtUrl"));
+    assert(m["coverArtUrl"].toString().contains("rel-1"));
+    assert(m["coverArtUrl"].toString().contains("coverartarchive.org/release/"));
+    std::cout << "  [PASS] MetadataProvider::toVariantList includes releaseId & coverArtUrl\n";
+}
+
+static void testMetadataProviderVariantListNoCoverArtUrlWithoutRelease() {
+    QList<MetadataResult> results;
+    MetadataResult r;
+    r.title = "T";
+    r.artist = "A";
+    r.recordingId = "rec-1";
+    r.score = 80;
+    // No releaseId
+    results.append(r);
+
+    QVariantList vl = MetadataProvider::toVariantList(results);
+    QVariantMap m = vl[0].toMap();
+    assert(!m.contains("coverArtUrl"));
+    std::cout << "  [PASS] MetadataProvider::toVariantList omits coverArtUrl when no releaseId\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -557,7 +583,59 @@ static void testAcoustIdVariantListIncludesReleaseGroupId() {
     QVariantList vl = AcoustIdClient::toVariantList(results);
     QVariantMap m = vl[0].toMap();
     assert(m["releaseGroupId"].toString() == "rg-1");
-    std::cout << "  [PASS] AcoustIdClient::toVariantList includes releaseGroupId\n";
+    assert(m.contains("coverArtUrl"));
+    assert(m["coverArtUrl"].toString().contains("rg-1"));
+    assert(m["coverArtUrl"].toString().contains("coverartarchive.org/release-group/"));
+    std::cout << "  [PASS] AcoustIdClient::toVariantList includes releaseGroupId & coverArtUrl\n";
+}
+
+// ---------------------------------------------------------------------------
+// Multi-release expansion tests
+// ---------------------------------------------------------------------------
+static void testMetadataProviderMultiReleasesCapped() {
+    // Build a recording with 8 releases; only first 5 should be expanded.
+    QByteArray json = R"JSON({
+        "recordings": [{
+            "id": "rec-1",
+            "title": "Song",
+            "score": 90,
+            "artist-credit": [{"artist": {"name": "Artist"}}],
+            "releases": [
+                {"id": "r1", "title": "A1"},
+                {"id": "r2", "title": "A2"},
+                {"id": "r3", "title": "A3"},
+                {"id": "r4", "title": "A4"},
+                {"id": "r5", "title": "A5"},
+                {"id": "r6", "title": "A6"},
+                {"id": "r7", "title": "A7"},
+                {"id": "r8", "title": "A8"}
+            ]
+        }]
+    })JSON";
+
+    QList<MetadataResult> results = MetadataProvider::parseAllResults(json);
+    assert(results.size() == 5);
+    assert(results[0].album == "A1");
+    assert(results[4].album == "A5");
+    std::cout << "  [PASS] MetadataProvider multi-release capped at 5\n";
+}
+
+static void testMetadataProviderNoReleases() {
+    QByteArray json = R"JSON({
+        "recordings": [{
+            "id": "rec-1",
+            "title": "Unknown Song",
+            "score": 70,
+            "artist-credit": [{"artist": {"name": "Artist"}}]
+        }]
+    })JSON";
+
+    QList<MetadataResult> results = MetadataProvider::parseAllResults(json);
+    assert(results.size() == 1);
+    assert(results[0].title == "Unknown Song");
+    assert(results[0].album.isEmpty());
+    assert(results[0].releaseId.isEmpty());
+    std::cout << "  [PASS] MetadataProvider recording with no releases\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -618,8 +696,13 @@ int main() {
     std::cout << "\nRunning releaseId / releaseGroupId extraction tests...\n";
     testMetadataProviderParseReleaseId();
     testMetadataProviderVariantListIncludesReleaseId();
+    testMetadataProviderVariantListNoCoverArtUrlWithoutRelease();
     testAcoustIdParseReleaseGroupId();
     testAcoustIdVariantListIncludesReleaseGroupId();
+
+    std::cout << "\nRunning multi-release expansion tests...\n";
+    testMetadataProviderMultiReleasesCapped();
+    testMetadataProviderNoReleases();
 
     std::cout << "\nAll tests passed!\n";
     return 0;

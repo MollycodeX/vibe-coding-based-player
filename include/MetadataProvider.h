@@ -71,7 +71,7 @@ private:
     QString m_album;
     QString m_title;
 
-    static constexpr int kDefaultLimit = 10;
+    static constexpr int kDefaultLimit = 20;
 };
 
 #endif // METADATAPROVIDER_H
