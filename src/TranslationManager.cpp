@@ -27,6 +27,9 @@ void TranslationManager::setLanguage(const QString &lang)
         if (m_translator.load(QStringLiteral(":/i18n/vibe-player_zh_CN"))) {
             m_app->installTranslator(&m_translator);
             m_translatorInstalled = true;
+        } else {
+            qWarning("TranslationManager: failed to load zh_CN translation");
+            m_language = QStringLiteral("en");
         }
     }
 

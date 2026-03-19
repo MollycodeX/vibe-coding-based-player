@@ -46,7 +46,7 @@ Window {
     palette.base:            theme.surfaceBg
     palette.text:            theme.text
     palette.highlight:       theme.accent
-    palette.highlightedText: root.darkTheme ? "#ffffff" : "#ffffff"
+    palette.highlightedText: "#ffffff"
 
     // Helper to format seconds as m:ss
     function formatTime(secs) {
