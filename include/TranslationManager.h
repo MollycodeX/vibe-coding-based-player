@@ -15,7 +15,7 @@ public:
                                 QObject *parent = nullptr);
 
     QString language() const;
-    void setLanguage(const QString &lang);
+    Q_INVOKABLE void setLanguage(const QString &lang);
 
 signals:
     void languageChanged();
