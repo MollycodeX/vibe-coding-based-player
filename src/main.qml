@@ -85,189 +85,212 @@ Window {
     }
 
     // -----------------------------------------------------------------------
-    // Metadata selection dialog – shown when multiple results are returned
+    // Metadata selection dialog – lazy-loaded when first needed
     // -----------------------------------------------------------------------
-    Dialog {
-        id: metadataSelectionDialog
-        title: qsTr("Select Metadata")
-        modal: true
-        anchors.centerIn: parent
-        width: Math.min(root.width - 40, 480)
-        height: Math.min(root.height - 60, 520)
-        standardButtons: Dialog.Cancel
+    Loader {
+        id: metadataSelectionDialogLoader
+        active: false
+        sourceComponent: Dialog {
+            id: metadataSelectionDialog
+            title: qsTr("Select Metadata")
+            modal: true
+            anchors.centerIn: parent
+            width: Math.min(root.width - 40, 480)
+            height: Math.min(root.height - 60, 520)
+            standardButtons: Dialog.Cancel
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 8
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 8
 
-            Label {
-                text: qsTr("Multiple results found. Please select the correct one:")
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
+                Label {
+                    text: qsTr("Multiple results found. Please select the correct one:")
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
 
-            ListView {
-                id: resultsList
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                model: playerController.metadataResults
+                ListView {
+                    id: resultsList
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    model: playerController.metadataResults
 
-                delegate: Rectangle {
-                    width: resultsList.width
-                    height: 64
-                    color: resultMouseArea.containsMouse ? theme.metadataHoverRow : (index % 2 === 0 ? theme.metadataEvenRow : theme.surfaceBg)
-                    radius: 4
+                    delegate: Rectangle {
+                        width: resultsList.width
+                        height: 64
+                        color: resultMouseArea.containsMouse ? theme.metadataHoverRow : (index % 2 === 0 ? theme.metadataEvenRow : theme.surfaceBg)
+                        radius: 4
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 8
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 8
 
-                        // Album cover art thumbnail
-                        Image {
-                            Layout.preferredWidth: 48
-                            Layout.preferredHeight: 48
-                            source: modelData.coverArtUrl
-                            fillMode: Image.PreserveAspectFit
-                            asynchronous: true
-                            // Placeholder when no cover art or loading failed
-                            Rectangle {
-                                anchors.fill: parent
-                                visible: parent.status !== Image.Ready
-                                color: theme.surfaceBg
-                                border.color: theme.border
-                                border.width: 1
-                                radius: 4
+                            // Album cover art thumbnail
+                            Image {
+                                Layout.preferredWidth: 48
+                                Layout.preferredHeight: 48
+                                source: modelData.coverArtUrl
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                // Placeholder when no cover art or loading failed
+                                Rectangle {
+                                    anchors.fill: parent
+                                    visible: parent.status !== Image.Ready
+                                    color: theme.surfaceBg
+                                    border.color: theme.border
+                                    border.width: 1
+                                    radius: 4
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: "🎵"
+                                        font.pointSize: 16
+                                    }
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
                                 Label {
-                                    anchors.centerIn: parent
-                                    text: "🎵"
-                                    font.pointSize: 16
+                                    text: modelData.title || qsTr("(unknown title)")
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: (modelData.artist || qsTr("Unknown Artist"))
+                                          + (modelData.album ? " — " + modelData.album : "")
+                                    font.pointSize: 9
+                                    color: theme.mutedText
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
                                 }
                             }
                         }
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-
-                            Label {
-                                text: modelData.title || qsTr("(unknown title)")
-                                font.bold: true
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
+                        MouseArea {
+                            id: resultMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                playerController.selectMetadataResult(index)
+                                metadataSelectionDialog.close()
                             }
-                            Label {
-                                text: (modelData.artist || qsTr("Unknown Artist"))
-                                      + (modelData.album ? " — " + modelData.album : "")
-                                font.pointSize: 9
-                                color: theme.mutedText
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: resultMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: {
-                            playerController.selectMetadataResult(index)
-                            metadataSelectionDialog.close()
                         }
                     }
                 }
             }
         }
+        function show() {
+            active = true
+            item.open()
+        }
     }
 
     // -----------------------------------------------------------------------
-    // Write metadata confirmation dialog
+    // Write metadata confirmation dialog – lazy-loaded when first needed
     // -----------------------------------------------------------------------
-    Dialog {
-        id: writeMetadataDialog
-        title: qsTr("Save Metadata")
-        modal: true
-        anchors.centerIn: parent
-        width: Math.min(root.width - 40, 360)
-        standardButtons: Dialog.Yes | Dialog.No
+    Loader {
+        id: writeMetadataDialogLoader
+        active: false
+        sourceComponent: Dialog {
+            id: writeMetadataDialog
+            title: qsTr("Save Metadata")
+            modal: true
+            anchors.centerIn: parent
+            width: Math.min(root.width - 40, 360)
+            standardButtons: Dialog.Yes | Dialog.No
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 8
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 8
 
-            Label {
-                text: qsTr("Write the following metadata into the audio file?")
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-            Label {
-                text: qsTr("Title: ") + playerController.trackTitle
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-            Label {
-                text: qsTr("Artist: ") + playerController.trackArtist
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-            Label {
-                text: qsTr("Album: ") + playerController.trackAlbum
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
+                Label {
+                    text: qsTr("Write the following metadata into the audio file?")
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: qsTr("Title: ") + playerController.trackTitle
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: qsTr("Artist: ") + playerController.trackArtist
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: qsTr("Album: ") + playerController.trackAlbum
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+
+                // Album cover art preview in dialog
+                Image {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 100
+                    Layout.preferredHeight: 100
+                    visible: playerController.albumArtUrl !== ""
+                    source: playerController.albumArtUrl
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                // Checkbox to embed album art
+                CheckBox {
+                    id: embedAlbumArtCheckBox
+                    text: qsTr("Embed album cover art")
+                    visible: playerController.albumArtUrl !== ""
+                    checked: playerController.embedAlbumArt
+                    onCheckedChanged: playerController.embedAlbumArt = checked
+                }
             }
 
-            // Album cover art preview in dialog
-            Image {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 100
-                Layout.preferredHeight: 100
-                visible: playerController.albumArtUrl !== ""
-                source: playerController.albumArtUrl
-                fillMode: Image.PreserveAspectFit
-                cache: false
-            }
+            onAccepted: playerController.writeMetadataToFile()
+        }
+        function show() {
+            active = true
+            item.open()
+        }
+    }
 
-            // Checkbox to embed album art
-            CheckBox {
-                id: embedAlbumArtCheckBox
-                text: qsTr("Embed album cover art")
-                visible: playerController.albumArtUrl !== ""
-                checked: playerController.embedAlbumArt
-                onCheckedChanged: playerController.embedAlbumArt = checked
+    // -----------------------------------------------------------------------
+    // TagLib-not-available information dialog – lazy-loaded when first needed
+    // -----------------------------------------------------------------------
+    Loader {
+        id: taglibMissingDialogLoader
+        active: false
+        sourceComponent: Dialog {
+            id: taglibMissingDialog
+            title: qsTr("Feature Unavailable")
+            modal: true
+            anchors.centerIn: parent
+            width: Math.min(root.width - 40, 360)
+            standardButtons: Dialog.Ok
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 8
+
+                Label {
+                    text: qsTr("Metadata writing is not available in this build because TagLib was not found at compile time.")
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: qsTr("To enable this feature, install TagLib (e.g. libtag1-dev on Ubuntu) and rebuild the application.")
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                    color: theme.mutedText
+                }
             }
         }
-
-        onAccepted: playerController.writeMetadataToFile()
-    }
-
-    // -----------------------------------------------------------------------
-    // TagLib-not-available information dialog
-    // -----------------------------------------------------------------------
-    Dialog {
-        id: taglibMissingDialog
-        title: qsTr("Feature Unavailable")
-        modal: true
-        anchors.centerIn: parent
-        width: Math.min(root.width - 40, 360)
-        standardButtons: Dialog.Ok
-
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 8
-
-            Label {
-                text: qsTr("Metadata writing is not available in this build because TagLib was not found at compile time.")
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-            Label {
-                text: qsTr("To enable this feature, install TagLib (e.g. libtag1-dev on Ubuntu) and rebuild the application.")
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-                color: theme.mutedText
-            }
+        function show() {
+            active = true
+            item.open()
         }
     }
 
@@ -276,7 +299,7 @@ Window {
         target: playerController
         function onMetadataResultsChanged() {
             if (playerController.metadataResults.length > 1)
-                metadataSelectionDialog.open()
+                metadataSelectionDialogLoader.show()
         }
         function onMetadataWritten(success) {
             writeResultLabel.text = success
@@ -335,7 +358,6 @@ Window {
                 visible: playerController.albumArtUrl !== ""
                 source: playerController.albumArtUrl
                 fillMode: Image.PreserveAspectFit
-                cache: false
 
                 Rectangle {
                     anchors.fill: parent
@@ -384,7 +406,7 @@ Window {
                     text: qsTr("Choose Result...")
                     font.pointSize: 9
                     visible: playerController.metadataResults.length > 1
-                    onClicked: metadataSelectionDialog.open()
+                    onClicked: metadataSelectionDialogLoader.show()
                 }
 
                 Button {
@@ -392,9 +414,9 @@ Window {
                     font.pointSize: 9
                     onClicked: {
                         if (playerController.metadataWriteSupported)
-                            writeMetadataDialog.open()
+                            writeMetadataDialogLoader.show()
                         else
-                            taglibMissingDialog.open()
+                            taglibMissingDialogLoader.show()
                     }
                 }
             }
@@ -572,6 +594,7 @@ Window {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            cacheBuffer: 120
             model: playerController.trackList
 
             delegate: Rectangle {

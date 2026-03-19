@@ -13,6 +13,7 @@ public:
 
     // Add a file path to the end of the playlist.
     void addTrack(const std::string& filePath);
+    void addTrack(std::string&& filePath);
 
     // Remove the track at the given index.
     void removeTrack(int index);
