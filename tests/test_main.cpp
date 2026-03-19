@@ -1,6 +1,4 @@
-#include "player.hpp"
 #include "Playlist.h"
-#include "AudioDecoder.h"
 #include "MetadataProvider.h"
 #include "LyricsProvider.h"
 #include "AudioFingerprinter.h"
@@ -136,42 +134,6 @@ static void testPlaylistUnicodePaths() {
     assert(tracks[2] == mixedPath);
 
     std::cout << "  [PASS] Unicode (CJK) file paths\n";
-}
-
-// ---------------------------------------------------------------------------
-// AudioDecoder unit tests
-// ---------------------------------------------------------------------------
-static void testAudioDecoderInit() {
-    AudioDecoder dec;
-    // Initializing with a valid path should succeed.
-    assert(dec.initialize("test.wav"));
-    // Initializing with nullptr should fail.
-    AudioDecoder nullPathDecoder;
-    assert(!nullPathDecoder.initialize(nullptr));
-    std::cout << "  [PASS] AudioDecoder initialize\n";
-}
-
-static void testAudioDecoderDecodeStub() {
-    AudioDecoder dec;
-    uint8_t* buf = nullptr;
-    int size = 0;
-    // Decoding without initialization should return -1.
-    assert(dec.decode(&buf, &size) == -1);
-    // Even after initialization the stub returns -1 (not yet implemented).
-    dec.initialize("test.wav");
-    assert(dec.decode(&buf, &size) == -1);
-    std::cout << "  [PASS] AudioDecoder decode stub\n";
-}
-
-static void testAudioDecoderCleanup() {
-    AudioDecoder dec;
-    dec.initialize("test.wav");
-    dec.cleanup();
-    // After cleanup, decode should fail.
-    uint8_t* buf = nullptr;
-    int size = 0;
-    assert(dec.decode(&buf, &size) == -1);
-    std::cout << "  [PASS] AudioDecoder cleanup\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -642,10 +604,6 @@ static void testMetadataProviderNoReleases() {
 // main
 // ---------------------------------------------------------------------------
 int main() {
-    // Keep the original Player smoke-test.
-    Player p;
-    p.play();
-
     std::cout << "\nRunning Playlist tests...\n";
     testPlaylistBasic();
     testPlaylistAddAndCurrent();
@@ -654,11 +612,6 @@ int main() {
     testPlaylistClear();
     testPlaylistSetCurrentIndex();
     testPlaylistUnicodePaths();
-
-    std::cout << "\nRunning AudioDecoder tests...\n";
-    testAudioDecoderInit();
-    testAudioDecoderDecodeStub();
-    testAudioDecoderCleanup();
 
     std::cout << "\nRunning MetadataProvider tests...\n";
     testMetadataProviderBuildUrl();

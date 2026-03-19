@@ -54,6 +54,16 @@ PlayerController::PlayerController(QObject *parent)
             &PlayerController::onCoverArtFailed);
 }
 
+PlayerController::~PlayerController()
+{
+    // Clean up the temporary cover art file on destruction.
+    if (!m_albumArtUrl.isEmpty()) {
+        QUrl url(m_albumArtUrl);
+        if (url.isLocalFile())
+            QFile::remove(url.toLocalFile());
+    }
+}
+
 bool PlayerController::isPlaying() const
 {
     return m_player.isPlaying();
@@ -77,8 +87,10 @@ QString PlayerController::currentTrack() const
 
 QStringList PlayerController::trackList() const
 {
+    const auto &tracks = m_playlist.getTracks();
     QStringList list;
-    for (const auto &t : m_playlist.getTracks())
+    list.reserve(static_cast<int>(tracks.size()));
+    for (const auto &t : tracks)
         list.append(QString::fromUtf8(t.c_str()));
     return list;
 }
@@ -444,6 +456,10 @@ void PlayerController::onCoverArtReady(const QByteArray &imageData)
     // Use a unique filename to avoid conflicts between instances.
     QString tmpPath = tmpDir + QStringLiteral("/mscplayer_cover_%1.jpg")
                                    .arg(reinterpret_cast<quintptr>(this));
+
+    // Remove the old temporary file before writing the new one.
+    QFile::remove(tmpPath);
+
     QFile file(tmpPath);
     if (file.open(QIODevice::WriteOnly)) {
         file.write(imageData);

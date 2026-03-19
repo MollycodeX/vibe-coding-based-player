@@ -7,7 +7,6 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
-#include <QDir>
 #include <QUrl>
 #include <QVariantList>
 #include "AudioPlayer.h"
@@ -50,6 +49,7 @@ class PlayerController : public QObject {
 
 public:
     explicit PlayerController(QObject *parent = nullptr);
+    ~PlayerController() override;
 
     bool        isPlaying()    const;
     float       volume()       const;

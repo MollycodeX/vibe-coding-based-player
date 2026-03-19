@@ -13,6 +13,13 @@ void Playlist::addTrack(const std::string& filePath) {
     }
 }
 
+void Playlist::addTrack(std::string&& filePath) {
+    tracks.push_back(std::move(filePath));
+    if (currentIdx < 0) {
+        currentIdx = 0;
+    }
+}
+
 void Playlist::removeTrack(int index) {
     if (index < 0 || index >= static_cast<int>(tracks.size())) return;
     tracks.erase(tracks.begin() + index);
