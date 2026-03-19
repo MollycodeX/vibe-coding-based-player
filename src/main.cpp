@@ -1,30 +1,33 @@
 #include <QGuiApplication>
+#include <QLocale>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QTranslator>
-#include <QLocale>
 #include "PlayerController.h"
+#include "TranslationManager.h"
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
-    // Multi-language support: load a .qm translation file for the system locale.
-    QTranslator translator;
+    QQmlApplicationEngine engine;
+
+    // Runtime-switchable translation manager exposed to QML.
+    TranslationManager translationManager(&app, &engine);
+
+    // Auto-detect system language: default to Chinese if the system locale is zh.
     const QStringList uiLanguages = QLocale::system().uiLanguages();
     for (const QString &locale : uiLanguages) {
-        const QString baseName = QStringLiteral("vibe-player_") + QLocale(locale).name();
-        if (translator.load(QStringLiteral(":/i18n/") + baseName)) {
-            app.installTranslator(&translator);
+        if (locale.startsWith(QStringLiteral("zh"))) {
+            translationManager.setLanguage(QStringLiteral("zh"));
             break;
         }
     }
 
-    QQmlApplicationEngine engine;
-
     // Expose the C++ player controller to QML as "playerController".
     PlayerController controller;
     engine.rootContext()->setContextProperty(QStringLiteral("playerController"), &controller);
+    engine.rootContext()->setContextProperty(QStringLiteral("translationManager"),
+                                            &translationManager);
 
     // Load the QML UI.
     const QUrl url(QStringLiteral("qrc:/VibePlayer/main.qml"));

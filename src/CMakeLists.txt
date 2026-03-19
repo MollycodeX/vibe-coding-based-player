@@ -95,7 +95,9 @@ endif()
 qt_add_executable(vibe_coding_player
     main.cpp
     PlayerController.cpp
+    TranslationManager.cpp
     ${PROJECT_SOURCE_DIR}/include/PlayerController.h
+    ${PROJECT_SOURCE_DIR}/include/TranslationManager.h
 )
 
 qt_add_qml_module(vibe_coding_player
