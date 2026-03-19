@@ -34,7 +34,19 @@ Window {
         readonly property color info:              root.darkTheme ? "#42a5f5" : "#1976D2"
         readonly property color metadataEvenRow:   root.darkTheme ? "#252525" : "#ffffff"
         readonly property color metadataHoverRow:  root.darkTheme ? "#33404d" : "#e8f0fe"
+        readonly property color buttonBg:          root.darkTheme ? "#3a3a3a" : "#e8e8e8"
+        readonly property color buttonHoverBg:     root.darkTheme ? "#4a4a4a" : "#d0d0d0"
     }
+
+    // Propagate theme colors to all controls via the palette
+    palette.button:          theme.buttonBg
+    palette.buttonText:      theme.text
+    palette.window:          theme.background
+    palette.windowText:      theme.text
+    palette.base:            theme.surfaceBg
+    palette.text:            theme.text
+    palette.highlight:       theme.accent
+    palette.highlightedText: root.darkTheme ? "#ffffff" : "#ffffff"
 
     // Helper to format seconds as m:ss
     function formatTime(secs) {
@@ -287,10 +299,19 @@ Window {
         anchors.margins: 16
         spacing: 12
 
-        // Theme toggle
+        // Theme and language toggles
         RowLayout {
             Layout.fillWidth: true
             Item { Layout.fillWidth: true }
+            Button {
+                text: translationManager.language === "zh" ? "English" : "中文"
+                flat: true
+                font.pointSize: 9
+                Accessible.name: translationManager.language === "zh"
+                    ? qsTr("Switch to English") : qsTr("Switch to Chinese")
+                onClicked: translationManager.setLanguage(
+                    translationManager.language === "zh" ? "en" : "zh")
+            }
             Button {
                 text: root.darkTheme ? qsTr("☀ Light") : qsTr("🌙 Dark")
                 flat: true
