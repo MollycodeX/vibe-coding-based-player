@@ -118,7 +118,15 @@ qt_add_executable(vibe_coding_player
 qt_add_qml_module(vibe_coding_player
     URI VibePlayer
     VERSION 1.0
-    QML_FILES main.qml
+    QML_FILES
+        main.qml
+        GlassPanel.qml
+        MeshGradientBackground.qml
+        ParticleField.qml
+        GlowSlider.qml
+        GlassButton.qml
+        AlbumArtDisplay.qml
+        ImmersiveLyrics.qml
     RESOURCE_PREFIX /
 )
 
