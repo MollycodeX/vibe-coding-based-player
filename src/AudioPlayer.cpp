@@ -99,6 +99,12 @@ static constexpr size_t kBytesPerSample   = 2;                          // int16
 static constexpr size_t kFrameSize        = kOutputChannels * kBytesPerSample; // 4
 // Ring buffer size: ~2 seconds of audio.
 static constexpr size_t kRingBufferSize   = kOutputSampleRate * kFrameSize * 2;
+// Volume threshold below which we apply scaling (avoids unnecessary work at
+// full volume).
+static constexpr float  kVolumeEpsilon    = 1e-6f;
+// Minimum number of free frames before we bother decoding more data.
+// ~256 frames ≈ 5.8 ms at 44.1 kHz – avoids decoding tiny chunks.
+static constexpr size_t kMinFillFrames    = 256;
 
 // ---------------------------------------------------------------------------
 // Pimpl implementation
@@ -156,7 +162,7 @@ void maDeviceCallback(ma_device* dev, void* pOutput, const void* /*pInput*/,
 
     // Apply volume scaling on the s16 samples.
     float vol = impl->volume;
-    if (vol < 0.999f) {
+    if (vol < 1.0f - kVolumeEpsilon) {
         auto* samples = reinterpret_cast<int16_t*>(out);
         size_t count  = got / sizeof(int16_t);
         for (size_t i = 0; i < count; ++i)
@@ -213,10 +219,11 @@ bool AudioPlayer::Impl::initFilterGraph() {
 
     // Build an argument string that describes the decoder output format.
     char args[256];
-    AVChannelLayout chLayout{};
-    av_channel_layout_default(&chLayout, codecCtx->ch_layout.nb_channels);
+    // Use the codec's existing channel layout to preserve the original
+    // configuration (e.g. 5.1, 7.1, etc.) rather than reconstructing from
+    // channel count alone.
     char layoutDesc[64] = {};
-    av_channel_layout_describe(&chLayout, layoutDesc, sizeof(layoutDesc));
+    av_channel_layout_describe(&codecCtx->ch_layout, layoutDesc, sizeof(layoutDesc));
     std::snprintf(args, sizeof(args),
                   "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=%s",
                   codecCtx->time_base.num ? codecCtx->time_base.num : 1,
@@ -224,7 +231,6 @@ bool AudioPlayer::Impl::initFilterGraph() {
                   codecCtx->sample_rate,
                   av_get_sample_fmt_name(codecCtx->sample_fmt),
                   layoutDesc);
-    av_channel_layout_uninit(&chLayout);
 
     int ret = avfilter_graph_create_filter(&bufferSrc, abuffer, "in", args, nullptr,
                                            filterGraph);
@@ -281,7 +287,7 @@ void AudioPlayer::Impl::decodeAndFillRing() {
 
     // Fill the ring buffer up to ~75 % capacity to keep latency low.
     const size_t targetFill = ring.freeSpace();
-    if (targetFill < kFrameSize * 256)
+    if (targetFill < kFrameSize * kMinFillFrames)
         return; // already full enough
 
     AVPacket*  pkt   = av_packet_alloc();
