@@ -1,5 +1,5 @@
 // PlayerController.cpp
-// Bridges the Qt QML front-end to the miniaudio-backed AudioPlayer/Playlist.
+// Bridges the Qt QML front-end to the FFmpeg/miniaudio-backed AudioPlayer/Playlist.
 
 #include "PlayerController.h"
 #include <QFileInfo>

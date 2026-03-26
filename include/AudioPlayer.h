@@ -4,14 +4,21 @@
 #include <string>
 #include <memory>
 
-// Concrete audio player backed by miniaudio (ma_engine high-level API).
-// Uses the pimpl idiom so miniaudio types are not exposed in this header.
+// Forward declarations for the miniaudio device callback.
+struct ma_device;
+typedef unsigned int ma_uint32;
+
+// Audio player using FFmpeg (libavformat/libavcodec/libswresample/libavfilter)
+// for decoding and miniaudio (ma_device low-level API) for audio output.
+// Uses the pimpl idiom so FFmpeg/miniaudio types are not exposed in this header.
 class AudioPlayer {
 public:
     AudioPlayer();
     ~AudioPlayer();
 
-    // Load a track file from disk (WAV / MP3 / FLAC / OGG supported).
+    // Load a track file from disk.
+    // Supports all formats that FFmpeg can decode (MP3, FLAC, WAV, OGG, AAC,
+    // WMA, M4A, Opus, ALAC, APE, WavPack, and many more).
     // Returns true on success.
     bool loadTrack(const std::string& filePath);
 
@@ -37,6 +44,9 @@ public:
 private:
     struct Impl;
     std::unique_ptr<Impl> pImpl;
+
+    // Allow the miniaudio device callback to access Impl.
+    friend void maDeviceCallback(ma_device*, void*, const void*, ma_uint32);
 };
 
 #endif // AUDIOPLAYER_H

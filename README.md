@@ -16,7 +16,7 @@
 
 - **语言**: C++17
 - **GUI框架**: Qt 6 (Qt Quick / QML)
-- **音频引擎**: [miniaudio](https://miniaud.io/) (嵌入式跨平台音频库)
+- **音频引擎**: [FFmpeg](https://ffmpeg.org/) (libavformat/libavcodec/libswresample/libavfilter 解码) + [miniaudio](https://miniaud.io/) (跨平台音频输出)
 - **音频指纹**: [Chromaprint](https://acoustid.org/chromaprint) (fpcalc命令行工具)
 - **音频识别**: [AcoustID](https://acoustid.org/) 开源音频识别服务
 - **在线元数据**: [MusicBrainz](https://musicbrainz.org/) 开源音乐数据库 API
@@ -52,6 +52,7 @@ MP3, WAV, FLAC, OGG, AAC, WMA, M4A, Opus
 #### 依赖
 
 - Qt 6 (Core, Gui, Qml, Quick, QuickDialogs2, Network)
+- FFmpeg 开发库 (libavformat, libavcodec, libavutil, libswresample, libavfilter)
 - ALSA 开发库 (Linux)
 - CMake ≥ 3.16
 - C++17 编译器
@@ -62,7 +63,8 @@ MP3, WAV, FLAC, OGG, AAC, WMA, M4A, Opus
 
 ```bash
 # 安装依赖
-sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libasound2-dev
+sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libasound2-dev \
+    libavformat-dev libavcodec-dev libavutil-dev libswresample-dev libavfilter-dev
 
 # 可选：安装音频指纹和元数据写入支持
 sudo apt-get install -y libchromaprint-tools libtag1-dev
@@ -85,7 +87,7 @@ ctest --output-on-failure
 ```
 MSCPLAYER/
 ├── include/           # C++头文件
-│   ├── AudioPlayer.h         # miniaudio音频播放器（PIMPL模式）
+│   ├── AudioPlayer.h         # FFmpeg+miniaudio音频播放器（PIMPL模式）
 │   ├── Playlist.h            # 播放列表管理
 │   ├── PlayerController.h    # QML↔C++桥接控制器
 │   ├── AudioFingerprinter.h  # Chromaprint音频指纹计算
@@ -126,7 +128,7 @@ MSCPLAYER is a cross-platform music player (Windows and Android, with other plat
 
 - **Language**: C++17
 - **GUI Framework**: Qt 6 (Qt Quick / QML)
-- **Audio Engine**: [miniaudio](https://miniaud.io/) (embedded cross-platform audio library)
+- **Audio Engine**: [FFmpeg](https://ffmpeg.org/) (libavformat/libavcodec/libswresample/libavfilter for decoding) + [miniaudio](https://miniaud.io/) (cross-platform audio output)
 - **Audio Fingerprinting**: [Chromaprint](https://acoustid.org/chromaprint) (fpcalc CLI tool)
 - **Audio Recognition**: [AcoustID](https://acoustid.org/) open-source audio recognition service
 - **Online Metadata**: [MusicBrainz](https://musicbrainz.org/) open music database API
@@ -162,6 +164,7 @@ The following features have been implemented and verified through testing:
 #### Dependencies
 
 - Qt 6 (Core, Gui, Qml, Quick, QuickDialogs2, Network)
+- FFmpeg development libraries (libavformat, libavcodec, libavutil, libswresample, libavfilter)
 - ALSA development library (Linux)
 - CMake ≥ 3.16
 - C++17 compiler
@@ -172,7 +175,8 @@ The following features have been implemented and verified through testing:
 
 ```bash
 # Install dependencies
-sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libasound2-dev
+sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libasound2-dev \
+    libavformat-dev libavcodec-dev libavutil-dev libswresample-dev libavfilter-dev
 
 # Optional: install audio fingerprinting and metadata writing support
 sudo apt-get install -y libchromaprint-tools libtag1-dev
@@ -195,7 +199,7 @@ ctest --output-on-failure
 ```
 MSCPLAYER/
 ├── include/           # C++ header files
-│   ├── AudioPlayer.h         # miniaudio audio player (PIMPL pattern)
+│   ├── AudioPlayer.h         # FFmpeg+miniaudio audio player (PIMPL pattern)
 │   ├── Playlist.h            # Playlist management
 │   ├── PlayerController.h    # QML ↔ C++ bridge controller
 │   ├── AudioFingerprinter.h  # Chromaprint audio fingerprint calculation
