@@ -34,7 +34,7 @@ Window {
         readonly property color mutedText:         root.darkTheme ? Qt.rgba(1,1,1,0.3) : Qt.rgba(0,0,0,0.35)
         readonly property color placeholderText:   root.darkTheme ? Qt.rgba(1,1,1,0.2) : Qt.rgba(0,0,0,0.25)
         // Accent derived from album art (or default blue)
-        readonly property color accent:            albumArtView.dominantColor1 !== "#1a0533"
+        readonly property color accent:            albumArtView.dominantColor2 !== "#0a1628"
                                                        ? albumArtView.dominantColor2
                                                        : (root.darkTheme ? "#5599ff" : "#3366cc")
         readonly property color accentBg:          Qt.rgba(theme.accent.r, theme.accent.g,
@@ -380,7 +380,7 @@ Window {
                 id: breathAnim
                 property real value: 1.0
                 NumberAnimation on value {
-                    from: 1.0; to: 1.003; duration: 1200
+                    from: 1.0; to: 1.008; duration: 1200
                     easing.type: Easing.InOutSine
                     loops: Animation.Infinite
                     running: playerController.isPlaying

@@ -131,7 +131,7 @@ Item {
         RotationAnimation on rotation {
             from: 0
             to: 360
-            duration: 30000   // 30s per revolution
+            duration: 30000   // 30 seconds per revolution
             loops: Animation.Infinite
             running: root.isPlaying && root.source !== ""
             paused: !root.isPlaying
