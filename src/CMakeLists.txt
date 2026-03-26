@@ -1,5 +1,6 @@
 # Build miniaudio as a plain-C static library so its implementation is
 # compiled exactly once and with C (not C++) rules.
+# miniaudio is now used only for the low-level audio device output (ma_device).
 add_library(miniaudio_lib STATIC miniaudio_impl.c)
 target_include_directories(miniaudio_lib PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
@@ -11,9 +12,19 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # ---------------------------------------------------------------------------
+# Required: FFmpeg libraries for audio decoding / resampling / filtering.
+# Only the audio-related subset is used (no libswscale / libpostproc).
+# ---------------------------------------------------------------------------
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(AVFORMAT  REQUIRED IMPORTED_TARGET libavformat)
+pkg_check_modules(AVCODEC   REQUIRED IMPORTED_TARGET libavcodec)
+pkg_check_modules(AVUTIL    REQUIRED IMPORTED_TARGET libavutil)
+pkg_check_modules(SWRESAMPLE REQUIRED IMPORTED_TARGET libswresample)
+pkg_check_modules(AVFILTER  REQUIRED IMPORTED_TARGET libavfilter)
+
+# ---------------------------------------------------------------------------
 # Optional: TagLib for metadata writing
 # ---------------------------------------------------------------------------
-find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(TAGLIB IMPORTED_TARGET taglib)
 endif()
@@ -56,6 +67,11 @@ target_include_directories(vibe_player_lib PUBLIC
 )
 target_link_libraries(vibe_player_lib PUBLIC
     miniaudio_lib
+    PkgConfig::AVFORMAT
+    PkgConfig::AVCODEC
+    PkgConfig::AVUTIL
+    PkgConfig::SWRESAMPLE
+    PkgConfig::AVFILTER
     Qt6::Core
     Qt6::Network
 )
