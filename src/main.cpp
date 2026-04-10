@@ -2,11 +2,21 @@
 #include <QLocale>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickWindow>
 #include "PlayerController.h"
 #include "TranslationManager.h"
 
 int main(int argc, char *argv[])
 {
+    // Fix: If 'basic' render loop doesn't solve window dragging stutters, it's highly likely
+    // a Windows Direct3D 11 swapchain lock issue. We force the RHI backend to use OpenGL.
+    qputenv("QSG_RHI_BACKEND", "opengl");
+
+    // Upgrade: Adopt the Material UI design engine. Material provides native dark/light theme 
+    // switching and beautifully animated controls, fixing the inverted Slider backgrounds 
+    // present in the fallback "Basic" or ancient OS-specific styles.
+    qputenv("QT_QUICK_CONTROLS_STYLE", "Material");
+
     QGuiApplication app(argc, argv);
 
     QQmlApplicationEngine engine;

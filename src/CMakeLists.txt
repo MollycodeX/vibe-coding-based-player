@@ -15,12 +15,35 @@ endif()
 # Required: FFmpeg libraries for audio decoding / resampling / filtering.
 # Only the audio-related subset is used (no libswscale / libpostproc).
 # ---------------------------------------------------------------------------
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(AVFORMAT  REQUIRED IMPORTED_TARGET libavformat)
-pkg_check_modules(AVCODEC   REQUIRED IMPORTED_TARGET libavcodec)
-pkg_check_modules(AVUTIL    REQUIRED IMPORTED_TARGET libavutil)
-pkg_check_modules(SWRESAMPLE REQUIRED IMPORTED_TARGET libswresample)
-pkg_check_modules(AVFILTER  REQUIRED IMPORTED_TARGET libavfilter)
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(AVFORMAT  QUIET IMPORTED_TARGET libavformat)
+    pkg_check_modules(AVCODEC   QUIET IMPORTED_TARGET libavcodec)
+    pkg_check_modules(AVUTIL    QUIET IMPORTED_TARGET libavutil)
+    pkg_check_modules(SWRESAMPLE QUIET IMPORTED_TARGET libswresample)
+    pkg_check_modules(AVFILTER  QUIET IMPORTED_TARGET libavfilter)
+endif()
+
+if(NOT AVFORMAT_FOUND)
+    message(STATUS "PkgConfig for FFmpeg not found or failed, using Fallback search paths...")
+    find_path(FFMPEG_INC libavformat/avformat.h HINTS ${FFMPEG_INCLUDE_DIR})
+    foreach(COMP avformat avcodec avutil swresample avfilter)
+        string(TOUPPER ${COMP} COMP_U)
+        find_library(${COMP_U}_LIB NAMES ${COMP} HINTS ${FFMPEG_LIB_DIR})
+        if(${COMP_U}_LIB AND FFMPEG_INC)
+            add_library(PkgConfig::${COMP_U} UNKNOWN IMPORTED)
+            set_target_properties(PkgConfig::${COMP_U} PROPERTIES
+                IMPORTED_LOCATION "${${COMP_U}_LIB}"
+                INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INC}"
+            )
+            set(${COMP_U}_FOUND TRUE)
+        endif()
+    endforeach()
+endif()
+
+if(NOT AVFORMAT_FOUND OR NOT AVCODEC_FOUND)
+    message(FATAL_ERROR "Could NOT find FFmpeg libraries!")
+endif()
 
 # ---------------------------------------------------------------------------
 # Optional: TagLib for metadata writing
@@ -131,6 +154,12 @@ target_link_libraries(vibe_coding_player PRIVATE
     Qt6::Quick
     Qt6::QuickDialogs2
 )
+
+# Fix for MSVC + Qt 6.9/6.10 C2065 "result" undeclared identifier bug in qtmochelpers.h
+if(MSVC)
+    target_compile_options(vibe_player_lib PRIVATE /permissive- /Zc:__cplusplus /Zc:lambda)
+    target_compile_options(vibe_coding_player PRIVATE /permissive- /Zc:__cplusplus /Zc:lambda)
+endif()
 
 # ---------------------------------------------------------------------------
 # i18n / translations

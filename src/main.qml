@@ -3,8 +3,9 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import QtQuick.Dialogs
+import QtQuick.Controls.Material
 
-Window {
+ApplicationWindow {
     id: root
     width: 480
     height: 700
@@ -12,10 +13,14 @@ Window {
     minimumHeight: 520
     visible: true
     title: qsTr("Vibe Player")
-    color: theme.background
 
     // Theme toggle: false = light, true = dark
     property bool darkTheme: false
+
+    // Tap into the beautiful native Material design engine
+    Material.theme: root.darkTheme ? Material.Dark : Material.Light
+    Material.accent: Material.LightBlue
+    Material.primary: Material.BlueGrey
 
     // Centralized theme palette
     QtObject {
@@ -38,15 +43,7 @@ Window {
         readonly property color buttonHoverBg:     root.darkTheme ? "#4a4a4a" : "#d0d0d0"
     }
 
-    // Propagate theme colors to all controls via the palette
-    palette.button:          theme.buttonBg
-    palette.buttonText:      theme.text
-    palette.window:          theme.background
-    palette.windowText:      theme.text
-    palette.base:            theme.surfaceBg
-    palette.text:            theme.text
-    palette.highlight:       theme.accent
-    palette.highlightedText: "#ffffff"
+    // (Obsolete palette overrides removed to unleash native Material aesthetics)
 
     // Helper to format seconds as m:ss
     function formatTime(secs) {
@@ -298,8 +295,8 @@ Window {
     Connections {
         target: playerController
         function onMetadataResultsChanged() {
-            if (playerController.metadataResults.length > 1)
-                metadataSelectionDialogLoader.show()
+            // Intentionally left blank. We do NOT auto-show the dialog.
+            // Users can manually click "Choose Result..." if they want to override the default selection.
         }
         function onMetadataWritten(success) {
             writeResultLabel.text = success
@@ -496,6 +493,26 @@ Window {
             Button {
                 text: qsTr("Next")
                 onClicked: playerController.next()
+            }
+            Button {
+                text: {
+                    switch (playerController.playbackMode) {
+                        case 0: return "→ " + qsTr("Sequential")
+                        case 1: return "↻ " + qsTr("Loop All")
+                        case 2: return "🔂 " + qsTr("Loop One")
+                        default: return qsTr("Mode")
+                    }
+                }
+                onClicked: {
+                    playerController.playbackMode = (playerController.playbackMode + 1) % 3
+                }
+            }
+            Button {
+                text: playerController.shuffleEnabled ? "🔀 " + qsTr("Shuffle On") : "🔀 " + qsTr("Shuffle Off")
+                flat: !playerController.shuffleEnabled
+                onClicked: {
+                    playerController.shuffleEnabled = !playerController.shuffleEnabled
+                }
             }
         }
 

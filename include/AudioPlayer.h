@@ -40,6 +40,7 @@ public:
     bool               isPlaying()       const;
     const std::string& getCurrentTrack() const;
     bool               isEngineReady()   const;
+    bool               isEndOfTrack()    const;
 
 private:
     struct Impl;

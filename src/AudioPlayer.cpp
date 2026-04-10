@@ -134,6 +134,8 @@ struct AudioPlayer::Impl {
     std::atomic<bool> trackLoaded{false};
     std::atomic<float> positionSec{0.0f};
     float             durationSec = 0.0f;
+    std::vector<uint8_t> leftoverBuf;      // preserves frame chunks when ring fills up
+    std::atomic<bool> endOfFile{false};
 
     // -- helpers --
     void closeTrack();
@@ -197,6 +199,8 @@ void AudioPlayer::Impl::closeTrack() {
         avformat_close_input(&fmtCtx);
     }
     ring.clear();
+    leftoverBuf.clear();
+    endOfFile.store(false, std::memory_order_relaxed);
     positionSec.store(0.0f, std::memory_order_relaxed);
     durationSec = 0.0f;
     currentTrack.clear();
@@ -212,68 +216,74 @@ bool AudioPlayer::Impl::initFilterGraph() {
     if (!filterGraph)
         return false;
 
+    // Helper lambda for safe cleanup and fast fail.
+    auto fail = [&]() {
+        avfilter_graph_free(&filterGraph);
+        filterGraph = nullptr;
+        bufferSrc   = nullptr;
+        bufferSink  = nullptr;
+        return false;
+    };
+
     // ---- source filter ----
     const AVFilter* abuffer = avfilter_get_by_name("abuffer");
-    if (!abuffer)
-        return false;
+    if (!abuffer) return fail();
 
     // Build an argument string that describes the decoder output format.
     char args[256];
-    // Use the codec's existing channel layout to preserve the original
-    // configuration (e.g. 5.1, 7.1, etc.) rather than reconstructing from
-    // channel count alone.
     char layoutDesc[64] = {};
-    av_channel_layout_describe(&codecCtx->ch_layout, layoutDesc, sizeof(layoutDesc));
+    int retDesc = av_channel_layout_describe(&codecCtx->ch_layout, layoutDesc, sizeof(layoutDesc));
+    if (retDesc < 0 || layoutDesc[0] == '\0') {
+        std::snprintf(layoutDesc, sizeof(layoutDesc), "stereo"); // Absolute fallback
+    }
+    const char* sampleFmtName = av_get_sample_fmt_name(codecCtx->sample_fmt);
     std::snprintf(args, sizeof(args),
                   "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=%s",
                   codecCtx->time_base.num ? codecCtx->time_base.num : 1,
                   codecCtx->time_base.den ? codecCtx->time_base.den : codecCtx->sample_rate,
                   codecCtx->sample_rate,
-                  av_get_sample_fmt_name(codecCtx->sample_fmt),
+                  sampleFmtName ? sampleFmtName : "s16",
                   layoutDesc);
 
     int ret = avfilter_graph_create_filter(&bufferSrc, abuffer, "in", args, nullptr,
                                            filterGraph);
-    if (ret < 0)
-        return false;
+    if (ret < 0) return fail();
 
     // ---- sink filter ----
     const AVFilter* abuffersink = avfilter_get_by_name("abuffersink");
-    if (!abuffersink)
-        return false;
+    if (!abuffersink) return fail();
 
     ret = avfilter_graph_create_filter(&bufferSink, abuffersink, "out", nullptr,
                                        nullptr, filterGraph);
-    if (ret < 0)
-        return false;
+    if (ret < 0) return fail();
 
     // Configure sink to request the output format we want.
     static const enum AVSampleFormat outFmts[] = {AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_NONE};
     ret = av_opt_set_int_list(bufferSink, "sample_fmts", outFmts, AV_SAMPLE_FMT_NONE,
                               AV_OPT_SEARCH_CHILDREN);
-    if (ret < 0)
-        return false;
+    if (ret < 0) return fail();
 
     static const int outRates[] = {kOutputSampleRate, -1};
     ret = av_opt_set_int_list(bufferSink, "sample_rates", outRates, -1,
                               AV_OPT_SEARCH_CHILDREN);
-    if (ret < 0)
-        return false;
+    if (ret < 0) return fail();
 
     AVChannelLayout outChLayout{};
     av_channel_layout_default(&outChLayout, kOutputChannels);
     ret = av_opt_set(bufferSink, "ch_layouts", "stereo", AV_OPT_SEARCH_CHILDREN);
     av_channel_layout_uninit(&outChLayout);
-    if (ret < 0)
-        return false;
+    if (ret < 0) return fail();
 
     // ---- link source → sink ----
     ret = avfilter_link(bufferSrc, 0, bufferSink, 0);
-    if (ret < 0)
-        return false;
+    if (ret < 0) return fail();
 
     ret = avfilter_graph_config(filterGraph, nullptr);
-    return ret >= 0;
+    if (ret >= 0) {
+        return true;
+    }
+
+    return fail();
 }
 
 // ---------------------------------------------------------------------------
@@ -284,6 +294,16 @@ void AudioPlayer::Impl::decodeAndFillRing() {
     std::lock_guard<std::mutex> lock(decodeMtx);
     if (!fmtCtx || !codecCtx)
         return;
+
+    // First try to empty any leftover data from the last oversized frame into the ring.
+    if (!leftoverBuf.empty()) {
+        size_t w = ring.write(leftoverBuf.data(), leftoverBuf.size());
+        if (w < leftoverBuf.size()) {
+            leftoverBuf.erase(leftoverBuf.begin(), leftoverBuf.begin() + w);
+            return; // Ring is still completely saturated, await next callback empty cycle.
+        }
+        leftoverBuf.clear();
+    }
 
     // Fill the ring buffer up to ~75 % capacity to keep latency low.
     const size_t targetFill = ring.freeSpace();
@@ -303,8 +323,10 @@ void AudioPlayer::Impl::decodeAndFillRing() {
     size_t filled = 0;
     while (filled < targetFill) {
         int ret = av_read_frame(fmtCtx, pkt);
-        if (ret < 0)
+        if (ret < 0) {
+            endOfFile.store(true, std::memory_order_relaxed);
             break; // EOF or error
+        }
 
         if (pkt->stream_index != audioStream) {
             av_packet_unref(pkt);
@@ -326,10 +348,12 @@ void AudioPlayer::Impl::decodeAndFillRing() {
             // Update playback position from the decoded frame PTS.
             if (frame->pts != AV_NOPTS_VALUE) {
                 AVRational tb = fmtCtx->streams[audioStream]->time_base;
-                positionSec.store(
-                    static_cast<float>(frame->pts) * static_cast<float>(tb.num) /
-                        static_cast<float>(tb.den),
-                    std::memory_order_relaxed);
+                if (tb.den != 0) {
+                    positionSec.store(
+                        static_cast<float>(frame->pts) * static_cast<float>(tb.num) /
+                            static_cast<float>(tb.den),
+                        std::memory_order_relaxed);
+                }
             }
 
             // Push through the filter graph.
@@ -349,8 +373,18 @@ void AudioPlayer::Impl::decodeAndFillRing() {
 
                     // filtFrame should already be s16/stereo/44100 from sink config.
                     size_t bytes = static_cast<size_t>(filtFrame->nb_samples) * kFrameSize;
-                    filled += ring.write(filtFrame->data[0], bytes);
+                    size_t w = ring.write(filtFrame->data[0], bytes);
+                    if (w < bytes) {
+                        const uint8_t* remain = filtFrame->data[0] + w;
+                        leftoverBuf.insert(leftoverBuf.end(), remain, remain + (bytes - w));
+                    }
+                    filled += w;
                     av_frame_unref(filtFrame);
+                    // Safe break: If ring buffer is saturated, signal outer loop to stop
+                    // but DO NOT goto exit here! We must let the sink exhaust itself properly (EAGAIN).
+                    if (w < bytes || ring.freeSpace() < kFrameSize) {
+                        filled = targetFill; // forces outer while(filled < targetFill) to break gracefully
+                    }
                 }
             } else {
                 // No filter graph: resample directly with SwrContext.
@@ -368,7 +402,15 @@ void AudioPlayer::Impl::decodeAndFillRing() {
                                                 frame->nb_samples);
                     if (converted > 0) {
                         size_t bytes = static_cast<size_t>(converted) * kFrameSize;
-                        filled += ring.write(buf.data(), bytes);
+                        size_t w = ring.write(buf.data(), bytes);
+                        if (w < bytes) {
+                            const uint8_t* remain = buf.data() + w;
+                            leftoverBuf.insert(leftoverBuf.end(), remain, remain + (bytes - w));
+                        }
+                        filled += w;
+                        if (w < bytes || ring.freeSpace() < kFrameSize) {
+                            filled = targetFill; 
+                        }
                     }
                 }
             }
@@ -468,11 +510,23 @@ bool AudioPlayer::loadTrack(const std::string& filePath) {
         return false;
     }
     avcodec_parameters_to_context(codecCtx, par);
+
     if (avcodec_open2(codecCtx, codec, nullptr) < 0) {
         avcodec_free_context(&codecCtx);
         avformat_close_input(&fmtCtx);
         std::cerr << "[AudioPlayer] Failed to open codec.\n";
         return false;
+    }
+
+    // [CRITICAL FIX]: For modern FFmpeg (>=5.1), unspec channel layouts from simple formats like MP3/WAV/FLAC
+    // can cause fatal assertion errors or segmentation faults when fed into swr_alloc_set_opts2 and libavfilter.
+    // Force a valid default channel layout mapping if none is securely provided by the container or decoder.
+    // MUST BE CALLED AFTER avcodec_open2 so we do not disrupt the decoder's own internal initialisation check!
+    if (codecCtx->ch_layout.order == AV_CHANNEL_ORDER_UNSPEC || codecCtx->ch_layout.nb_channels <= 0) {
+        int fallbackChans = codecCtx->ch_layout.nb_channels > 0 ? codecCtx->ch_layout.nb_channels :
+                           (par->ch_layout.nb_channels > 0 ? par->ch_layout.nb_channels : 2);
+        av_channel_layout_uninit(&codecCtx->ch_layout);
+        av_channel_layout_default(&codecCtx->ch_layout, fallbackChans);
     }
 
     // ---- Setup resampler (fallback, used when filter graph is absent) ----
@@ -542,17 +596,12 @@ void AudioPlayer::pause() {
 
 void AudioPlayer::stop() {
     pImpl->playing.store(false, std::memory_order_release);
-    // Seek back to beginning.
+    // Halt decoders naturally. Do NOT perform forced av_seek_frame operations here 
+    // to avoid assertion crash vulnerabilities in mid-flight during track skips or errors.
     if (pImpl->trackLoaded.load(std::memory_order_acquire)) {
         std::lock_guard<std::mutex> lock(pImpl->decodeMtx);
-        if (pImpl->fmtCtx && pImpl->audioStream >= 0) {
-            av_seek_frame(pImpl->fmtCtx, pImpl->audioStream, 0,
-                          AVSEEK_FLAG_BACKWARD);
-            if (pImpl->codecCtx)
-                avcodec_flush_buffers(pImpl->codecCtx);
-            pImpl->ring.clear();
-            pImpl->positionSec.store(0.0f, std::memory_order_relaxed);
-        }
+        pImpl->positionSec.store(0.0f, std::memory_order_relaxed);
+        pImpl->ring.clear();
     }
 }
 
@@ -601,6 +650,12 @@ void AudioPlayer::seekTo(float seconds) {
 // ---------------------------------------------------------------------------
 bool AudioPlayer::isPlaying() const {
     return pImpl->playing.load(std::memory_order_relaxed);
+}
+
+bool AudioPlayer::isEndOfTrack() const {
+    return pImpl->endOfFile.load(std::memory_order_relaxed) &&
+           pImpl->ring.available() == 0 &&
+           pImpl->leftoverBuf.empty();
 }
 
 const std::string& AudioPlayer::getCurrentTrack() const {

@@ -21,6 +21,14 @@
 class PlayerController : public QObject {
     Q_OBJECT
 
+public:
+    enum PlaybackMode {
+        Sequential = 0,
+        LoopAll,
+        LoopOne
+    };
+    Q_ENUM(PlaybackMode)
+
     // Properties exposed to QML
     Q_PROPERTY(bool        isPlaying    READ isPlaying    NOTIFY playingChanged)
     Q_PROPERTY(float       volume       READ volume       WRITE setVolume   NOTIFY volumeChanged)
@@ -30,6 +38,8 @@ class PlayerController : public QObject {
     Q_PROPERTY(int         currentIndex READ currentIndex NOTIFY currentTrackChanged)
     Q_PROPERTY(float       position     READ position     NOTIFY positionChanged)
     Q_PROPERTY(float       duration     READ duration     NOTIFY durationChanged)
+    Q_PROPERTY(PlaybackMode playbackMode READ playbackMode WRITE setPlaybackMode NOTIFY playbackModeChanged)
+    Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
 
     // Online metadata properties
     Q_PROPERTY(QString trackTitle  READ trackTitle  NOTIFY metadataChanged)
@@ -60,6 +70,11 @@ public:
     int         currentIndex() const;
     float       position()     const;
     float       duration()     const;
+    PlaybackMode playbackMode() const;
+    void        setPlaybackMode(PlaybackMode mode);
+
+    bool        shuffleEnabled() const;
+    void        setShuffleEnabled(bool enabled);
 
     // Online metadata accessors
     QString trackTitle()  const;
@@ -104,6 +119,8 @@ signals:
     void playlistChanged();
     void positionChanged();
     void durationChanged();
+    void playbackModeChanged();
+    void shuffleEnabledChanged();
     void metadataChanged();
     void lyricsChanged();
     void metadataResultsChanged();

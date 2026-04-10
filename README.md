@@ -44,6 +44,9 @@ MP3, WAV, FLAC, OGG, AAC, WMA, M4A, Opus
 - ✅ 联网查找歌词（通过LRCLIB开源数据库获取纯文本及同步歌词）
 - ✅ 多结果选择（当查找出现多个结果时，列出GUI对话框让用户手动选择正确的元数据）
 - ✅ 元数据写入（可让用户选择是否将识别到的元数据录入音频文件中，通过TagLib实现）
+- ✅ 进阶播放序列控制（支持基于高阶洗牌算法的独立随机抽选，以及单曲、列表循环和顺播到底停止等多轴控制）
+- ✅ 数据状态持久层（引入 `QSettings`，自动缓存及在下次启动时恢复应用界面的音量、循环策略以及洗牌设定）
+- ✅ 音频后端重构：彻底解决缓冲区截断造成的 FLAC 等高密度格式播放时崩溃或鬼畜加速、丢帧等问题，实现0损耗底层读取。
 - ✅ UI中显示歌曲元信息（曲名、艺术家、专辑、封面）和可折叠歌词面板
 - ✅ Unicode路径支持（含CJK字符的文件路径）
 
@@ -156,6 +159,9 @@ The following features have been implemented and verified through testing:
 - ✅ Online lyrics lookup (plain text and synced LRC lyrics via LRCLIB)
 - ✅ Multiple result selection (GUI dialog for choosing the correct metadata when multiple matches are found)
 - ✅ Metadata writing (optionally write recognized metadata to audio files via TagLib)
+- ✅ Advanced Playback Sequence Control: Features orthogonal shuffling (via high-order randomized mechanisms) seamlessly operating with loop-one, loop-all, and sequential behaviors.
+- ✅ Persistence Layer: Uses `QSettings` to automatically cache and restore configurations, including playback states, shuffling flags, and volume upon launch.
+- ✅ Audio engine core stabilization: Thoroughly eradicated out-of-bounds truncate glitches, random speed-ups, and crashing bugs previously affecting high-fidelity formats like FLAC.
 - ✅ Song metadata display in UI (title, artist, album, cover art) with collapsible lyrics panel
 - ✅ Unicode path support (file paths containing CJK characters)
 

@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QFile>
+#include <QSettings>
 
 static const QStringList audioExtensions = {
     "mp3", "wav", "flac", "ogg", "aac", "wma", "m4a", "opus"
@@ -52,6 +53,17 @@ PlayerController::PlayerController(QObject *parent)
             &PlayerController::onCoverArtReady);
     connect(&m_coverArtProvider, &CoverArtProvider::coverArtFailed, this,
             &PlayerController::onCoverArtFailed);
+
+    // Persist session presets
+    QSettings settings("MSC", "VibePlayer");
+    float vol = settings.value("volume", 1.0f).toFloat();
+    m_player.setVolume(vol);
+
+    int mode = settings.value("playbackMode", static_cast<int>(LoopAll)).toInt();
+    m_playlist.setPlaybackMode(static_cast<Playlist::PlaybackMode>(mode));
+
+    bool shuffle = settings.value("shuffleEnabled", false).toBool();
+    m_playlist.setShuffleEnabled(shuffle);
 }
 
 PlayerController::~PlayerController()
@@ -77,6 +89,8 @@ float PlayerController::volume() const
 void PlayerController::setVolume(float v)
 {
     m_player.setVolume(v);
+    QSettings settings("MSC", "VibePlayer");
+    settings.setValue("volume", v);
     emit volumeChanged();
 }
 
@@ -113,6 +127,36 @@ float PlayerController::position() const
 float PlayerController::duration() const
 {
     return m_player.getDurationSeconds();
+}
+
+PlayerController::PlaybackMode PlayerController::playbackMode() const
+{
+    return static_cast<PlayerController::PlaybackMode>(m_playlist.getPlaybackMode());
+}
+
+void PlayerController::setPlaybackMode(PlaybackMode mode)
+{
+    if (playbackMode() != mode) {
+        m_playlist.setPlaybackMode(static_cast<Playlist::PlaybackMode>(mode));
+        QSettings settings("MSC", "VibePlayer");
+        settings.setValue("playbackMode", static_cast<int>(mode));
+        emit playbackModeChanged();
+    }
+}
+
+bool PlayerController::shuffleEnabled() const
+{
+    return m_playlist.isShuffleEnabled();
+}
+
+void PlayerController::setShuffleEnabled(bool enabled)
+{
+    if (shuffleEnabled() != enabled) {
+        m_playlist.setShuffleEnabled(enabled);
+        QSettings settings("MSC", "VibePlayer");
+        settings.setValue("shuffleEnabled", enabled);
+        emit shuffleEnabledChanged();
+    }
 }
 
 QString PlayerController::trackTitle() const { return m_trackTitle; }
@@ -175,6 +219,10 @@ void PlayerController::next()
 {
     if (m_playlist.hasTrack()) {
         const std::string &track = m_playlist.nextTrack();
+        if (track.empty()) {
+            pause();
+            return;
+        }
         m_player.loadTrack(track);
         m_player.play();
         emit currentTrackChanged();
@@ -189,6 +237,10 @@ void PlayerController::previous()
 {
     if (m_playlist.hasTrack()) {
         const std::string &track = m_playlist.previousTrack();
+        if (track.empty()) {
+            pause();
+            return;
+        }
         m_player.loadTrack(track);
         m_player.play();
         emit currentTrackChanged();
@@ -282,6 +334,15 @@ void PlayerController::seek(float seconds)
 void PlayerController::updatePosition()
 {
     emit positionChanged();
+
+    if (m_player.isPlaying() && m_player.isEndOfTrack()) {
+        if (m_playlist.hasTrack()) {
+            // Because our playlist state machine automatically determines the correct 
+            // "next" path in LoopOne/LoopAll/Shuffle/Sequential mode, we can simply 
+            // defer routing directly to next().
+            next();
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
